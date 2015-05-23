@@ -1,0 +1,6 @@
+*.pyc
+.pyenv-version
+docs/_build
+examples/.ipynb_checkpoints/
+tests/.coverage
+tests/cover

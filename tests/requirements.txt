@@ -1,0 +1,7 @@
+coverage
+httpretty
+mock
+nose
+six
+sure
+
