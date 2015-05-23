@@ -9,6 +9,7 @@ This module contains the core classes of PyACI.
 
 from collections import defaultdict
 from lxml import etree
+import getpass
 import json
 import logging
 import operator
@@ -509,7 +510,13 @@ class LoginMethod(Api):
     def _relativeUrl(self):
         return 'aaaLogin'
 
-    def __call__(self, name, pwd):
+    def __call__(self, name, pwd=None, pwdFile=None):
+        if pwd is None and pwdFile is None:
+            pwd = getpass.getpass('Enter {} password: '.format(name))
+        elif pwd is None:
+            with open(pwdFile, 'r') as f:
+                pwd = f.read()
+        print pwd
         self._properties['name'] = name
         self._properties['pwd'] = pwd
         return self
@@ -531,6 +538,40 @@ class LoginRefreshMethod(Api):
     @property
     def _relativeUrl(self):
         return 'aaaRefresh'
+
+
+class ChangeCertMethod(Api):
+    def __init__(self, parentApi):
+        super(ChangeCertMethod, self).__init__(parentApi=parentApi)
+        self._moClassName = 'aaaChangeX509Cert'
+        self._properties = {}
+
+    @property
+    def Json(self):
+        result = {}
+        result[self._moClassName] = {'attributes': self._properties.copy()}
+        return json.dumps(result,
+                          sort_keys=True, indent=2, separators=(',', ': '))
+
+    @property
+    def Xml(self):
+        result = etree.Element(self._moClassName)
+
+        for key, value in self._properties.items():
+            result.set(key, value)
+
+        return etree.tostring(result, pretty_print=True)
+
+    @property
+    def _relativeUrl(self):
+        return 'changeSelfX509Cert'
+
+    def __call__(self, userName, certName, certFile):
+        self._properties['userName'] = userName
+        self._properties['name'] = certName
+        with open(certFile, 'r') as f:
+            self._properties['data'] = f.read()
+        return self
 
 
 class UploadPackageMethod(Api):
@@ -576,6 +617,10 @@ class MethodApi(Api):
     @property
     def LoginRefresh(self):
         return LoginRefreshMethod(parentApi=self)
+
+    @property
+    def ChangeCert(self):
+        return ChangeCertMethod(parentApi=self)
 
     @property
     def UploadPackage(self):
