@@ -7,8 +7,11 @@ pyaci.core
 This module contains the core classes of PyACI.
 """
 
+from OpenSSL.crypto import FILETYPE_PEM, load_privatekey, sign
 from collections import defaultdict
 from lxml import etree
+from requests import Request
+import base64
 import getpass
 import json
 import logging
@@ -60,60 +63,13 @@ class Api(object):
         self._parentApi = parentApi
 
     def GET(self, format=None, **kwargs):
-        if format is None:
-            format = payloadFormat
-
-        logger = subLogger('GET')
-        rootApi = self._rootApi()
-        url = self._url(format, **kwargs)
-        logger.debug('-> GET %s', url)
-        response = rootApi._session.request('GET', url, verify=False)
-        logger.debug('<- %d', response.status_code)
-        logger.debug('%s', response.text)
-        if response.status_code != requests.codes.ok:
-            # TODO: Parse error message and extract fields.
-            raise RestError(response.text)
-        return response
+        return self._performRequest('GET', format=format, **kwargs)
 
     def DELETE(self, format=None):
-        if format is None:
-            format = payloadFormat
-
-        root = self._rootApi()
-        url = self._url(format)
-        logger.debug('-> DELETE %s', url)
-        response = root._session.request(
-            'DELETE', url, verify=False
-        )
-        logger.debug('<- %d', response.status_code)
-        logger.debug('%s', response.text)
-        if response.status_code != requests.codes.ok:
-            # TODO: Parse error message and extract fields.
-            raise RestError(response.text)
-        return response
+        return self._performRequest('DELETE', format=format)
 
     def POST(self, format=None):
-        if format is None:
-            format = payloadFormat
-
-        logger = subLogger('POST')
-        root = self._rootApi()
-        url = self._url(format)
-        if format == 'json':
-            data = self.Json
-        elif format == 'xml':
-            data = self.Xml
-        logger.debug('-> POST %s', url)
-        logger.debug('%s', data)
-        response = root._session.request(
-            'POST', url, data=data, verify=False
-        )
-        logger.debug('<- %d', response.status_code)
-        logger.debug('%s', response.text)
-        if response.status_code != requests.codes.ok:
-            # TODO: Parse error message and extract fields.
-            raise RestError(response.text)
-        return response
+        return self._performRequest('POST', format=format, needData=True)
 
     def _url(self, format=None, **kwargs):
         if format is None:
@@ -142,6 +98,53 @@ class Api(object):
 
         return loop(self, '') + '.' + format + options
 
+    def _performRequest(self, method, format=None, needData=False, **kwargs):
+        if format is None:
+            format = payloadFormat
+
+        logger = subLogger(method)
+        rootApi = self._rootApi()
+        url = self._url(format, **kwargs)
+
+        if needData:
+            if format == 'json':
+                data = self.Json
+            elif format == 'xml':
+                data = self.Xml
+        else:
+            data = None
+
+        logger.debug('-> %s %s', method, url)
+        if needData:
+            logger.debug('%s', data)
+
+        req = Request(method, url, data=data)
+        prepped = rootApi._session.prepare_request(req)
+        self._x509Prep(rootApi, prepped, data)
+        response = rootApi._session.send(prepped, verify=False)
+
+        logger.debug('<- %d', response.status_code)
+        logger.debug('%s', response.text)
+        if response.status_code != requests.codes.ok:
+            # TODO: Parse error message and extract fields.
+            raise RestError(response.text)
+        return response
+
+    def _x509Prep(self, rootApi, req, data):
+        if rootApi._x509Key is None:
+            return
+        payload = '{}{}'.format(req.method, req.url.replace(rootApi._url, ''))
+        if data is not None:
+            payload += data
+        signature = base64.b64encode(sign(rootApi._x509Key, payload,
+                                          'sha256'))
+        cookie = ('APIC-Request-Signature={}; '
+                  'APIC-Certificate-Algorithm=v1.0; '
+                  'APIC-Certificate-Fingerprint=fingerprint; '
+                  'APIC-Certificate-DN={}').format(
+                      signature, rootApi._x509Dn)
+        req.headers['Cookie'] = cookie
+
     def _rootApi(self):
         return self._parentApi._rootApi()
 
@@ -155,17 +158,25 @@ class Node(Api):
         else:
             self._session = requests.session()
         self._apiUrlComponent = 'api'
+        self._x509Key = None
 
     @property
     def session(self):
         return self._session
+
+    def useX509CertAuth(self, userName, certName, certFile):
+        with open(certFile, 'r') as f:
+            key = f.read()
+        self._x509Dn = (self.mit.polUni().aaaUserEp().
+                        aaaUser(userName).aaaUserCert(certName).Dn)
+        self._x509Key = load_privatekey(FILETYPE_PEM, key)
 
     @property
     def mit(self):
         return Mo(self, 'topRoot')
 
     @property
-    def method(self):
+    def methods(self):
         return MethodApi(self)
 
     @property
@@ -510,15 +521,14 @@ class LoginMethod(Api):
     def _relativeUrl(self):
         return 'aaaLogin'
 
-    def __call__(self, name, pwd=None, pwdFile=None):
-        if pwd is None and pwdFile is None:
-            pwd = getpass.getpass('Enter {} password: '.format(name))
-        elif pwd is None:
-            with open(pwdFile, 'r') as f:
-                pwd = f.read()
-        print pwd
+    def __call__(self, name, password=None, passwordFile=None):
+        if password is None and passwordFile is None:
+            password = getpass.getpass('Enter {} password: '.format(name))
+        elif password is None:
+            with open(passwordFile, 'r') as f:
+                password = f.read()
         self._properties['name'] = name
-        self._properties['pwd'] = pwd
+        self._properties['pwd'] = password
         return self
 
 

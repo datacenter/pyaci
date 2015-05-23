@@ -54,6 +54,10 @@ def pageSize(value):
     return ApiOptions([('page-size', value)])
 
 
+"""Subscribe to queries."""
+subscribe = ApiOptions([('subscription', 'yes')])
+
+
 def filter(filt):
     """Restrict to the specified filter"""
     return ApiOptions([('query-target-filter', str(filt))])

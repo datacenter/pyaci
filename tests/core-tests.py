@@ -233,7 +233,7 @@ class MoTests(unittest.TestCase):
 
 class LoginTests(unittest.TestCase):
     def setUp(self):
-        self.login = pyaci.Node('https://localhost').method.Login(
+        self.login = pyaci.Node('https://localhost').methods.Login(
             'jsmith', 'secret'
         )
 
@@ -274,7 +274,7 @@ class LoginTests(unittest.TestCase):
 
 class LoginRefreshTests(unittest.TestCase):
     def setUp(self):
-        self.login = pyaci.Node('https://localhost').method.LoginRefresh
+        self.login = pyaci.Node('https://localhost').methods.LoginRefresh
 
     def testCreation(self):
         self.login._url().should.equal('https://localhost/api/aaaRefresh.json')
