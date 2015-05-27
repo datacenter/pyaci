@@ -34,11 +34,6 @@ def subLogger(name):
 
 payloadFormat = 'json'
 
-
-# FIXME (2015-05-07, Praveen Kumar): We need to load the ACI meta JSON
-# file. Currently, the file is specified through an environment
-# variable. Find a better alternative.
-
 # TODO (2015-05-07, Praveen Kumar): Research a way to automatically
 # load this by discovering the version from the node.
 
@@ -121,7 +116,7 @@ class Api(object):
         req = Request(method, url, data=data)
         prepped = rootApi._session.prepare_request(req)
         self._x509Prep(rootApi, prepped, data)
-        response = rootApi._session.send(prepped, verify=False)
+        response = rootApi._session.send(prepped, verify=rootApi._verify)
 
         logger.debug('<- %d', response.status_code)
         logger.debug('%s', response.text)
@@ -150,13 +145,16 @@ class Api(object):
 
 
 class Node(Api):
-    def __init__(self, url, session=None):
+    def __init__(self, url, session=None, verify=True, disableWarnings=False):
         super(Node, self).__init__()
         self._url = url
         if session is not None:
             self._session = session
         else:
             self._session = requests.session()
+        self._verify = verify
+        if disableWarnings:
+            requests.packages.urllib3.disable_warnings()
         self._apiUrlComponent = 'api'
         self._x509Key = None
 
@@ -164,12 +162,24 @@ class Node(Api):
     def session(self):
         return self._session
 
+    @property
+    def websocketUrl(self):
+        token = self._rootApi()._session.cookies['APIC-cookie']
+        return '{}/socket{}'.format(
+            self._url.replace('https', 'wss').replace('http', 'ws'), token)
+
     def useX509CertAuth(self, userName, certName, certFile):
         with open(certFile, 'r') as f:
             key = f.read()
         self._x509Dn = (self.mit.polUni().aaaUserEp().
                         aaaUser(userName).aaaUserCert(certName).Dn)
         self._x509Key = load_privatekey(FILETYPE_PEM, key)
+
+    def toggleTestApi(self, shouldEnable, dme='policymgr'):
+        if shouldEnable:
+            self._apiUrlComponent = 'testapi/{}'.format(dme)
+        else:
+            self._apiUrlComponent = 'api'
 
     @property
     def mit(self):
@@ -179,18 +189,19 @@ class Node(Api):
     def methods(self):
         return MethodApi(self)
 
+    def handleWebsocketNotification(self, data):
+        if data[0] == '{':
+            format = 'json'
+        else:
+            format = 'xml'
+        print 'Handling Websocket notification:', format, data
+
     @property
     def _relativeUrl(self):
         return self._url + '/' + self._apiUrlComponent
 
     def _rootApi(self):
         return self
-
-    def _testApi(self, shouldEnable, dme='policymgr'):
-        if shouldEnable:
-            self._apiUrlComponent = 'testapi/{}'.format(dme)
-        else:
-            self._apiUrlComponent = 'api'
 
 
 class MoIter(Api):
@@ -598,13 +609,16 @@ class UploadPackageMethod(Api):
         return self
 
     def POST(self, format='xml'):
+        # TODO (2015-05-23, Praveen Kumar): Fix this method to work
+        # with certificate based authentication.
         root = self._rootApi()
         assert format == 'xml'
         if not os.path.exists(self._packageFile):
             raise ResourceError('File not found: ' + self.packageFile)
         with open(self._packageFile, 'r') as f:
             response = root._session.request(
-                'POST', self._url(format), files={'file': f}, verify=False
+                'POST', self._url(format), files={'file': f},
+                verify=root._verify
             )
         if response.status_code != requests.codes.ok:
             # TODO: Parse error message and extract fields.

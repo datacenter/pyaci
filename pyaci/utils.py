@@ -116,7 +116,7 @@ def distributeConfig(root, result=[]):
     for child in root.Children:
         if child._aciClassMeta['isContextRoot']:
             topRoot = root.TopRoot
-            newRoot = topRoot._parentApi.Mo
+            newRoot = topRoot._parentApi.mit
             newChild = newRoot.FromDn(child.Dn)
             # TODO (2015-04-02, Praveen Kumar): Clone the tree in a
             # better way.
