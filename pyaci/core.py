@@ -272,7 +272,7 @@ class Mo(Api):
     def FromDn(self, dn):
         def reductionF(acc, rn):
             dashAt = rn.find('-')
-            rnPrefix = rn if dashAt == -1 else rn[:dashAt]
+            rnPrefix = rn if dashAt == -1 else rn[:dashAt] + '-'
             className = acc._aciClassMeta['rnMap'][rnPrefix]
             return acc._spawnChildFromRn(className, rn)
 
