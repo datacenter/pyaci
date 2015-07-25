@@ -32,7 +32,7 @@ logger = logging.getLogger(__name__)
 def subLogger(name):
     return logging.getLogger('{}.{}'.format(__name__, name))
 
-payloadFormat = 'json'
+payloadFormat = 'xml'
 
 # TODO (2015-05-07, Praveen Kumar): Research a way to automatically
 # load this by discovering the version from the node.
@@ -145,7 +145,7 @@ class Api(object):
 
 
 class Node(Api):
-    def __init__(self, url, session=None, verify=True, disableWarnings=False):
+    def __init__(self, url, session=None, verify=False, disableWarnings=True):
         super(Node, self).__init__()
         self._url = url
         if session is not None:
@@ -230,7 +230,7 @@ class MoIter(Api):
             if self._parentApi.TopRoot._readOnlyTree:
                 raise MoError(
                     'Mo with DN {} does not contain a child with RN {}'
-                    .format(self._parentApi.DN, rn))
+                    .format(self._parentApi.Dn, rn))
 
             mo = Mo(self._parentApi, self._className)
             for name in identifiedBy:

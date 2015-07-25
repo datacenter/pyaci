@@ -30,7 +30,7 @@ class MoTests(unittest.TestCase):
         uni.Rn.should.equal('uni')
         uni.Dn.should.equal('uni')
         uni._url().should_not.be.different_of(
-            url + '/api/mo/' + uni.Dn + '.json'
+            url + '/api/mo/' + uni.Dn + '.xml'
         )
 
     def testFvTenant(self):
@@ -38,7 +38,7 @@ class MoTests(unittest.TestCase):
         tenant.Rn.should.equal('tn-common')
         tenant.Dn.should.equal('uni/tn-common')
         tenant._url().should_not.be.different_of(
-            url + '/api/mo/' + tenant.Dn + '.json'
+            url + '/api/mo/' + tenant.Dn + '.xml'
         )
 
     def testFvTenantOptionalArgs(self):
@@ -55,7 +55,7 @@ class MoTests(unittest.TestCase):
 
     def testUrl(self):
         mos = self.api.mit
-        mos._url().should.equal(url + '/api/mo.json')
+        mos._url().should.equal(url + '/api/mo.xml')
 
     def testUniFromDn(self):
         uni = self.api.mit.FromDn('uni')
@@ -238,7 +238,7 @@ class LoginTests(unittest.TestCase):
         )
 
     def testCreation(self):
-        self.login._url().should.equal('https://localhost/api/aaaLogin.json')
+        self.login._url().should.equal('https://localhost/api/aaaLogin.xml')
         self.login.Xml.should.equal(
             '<aaaUser pwd="secret" name="jsmith"/>\n'
         )
@@ -256,7 +256,7 @@ class LoginTests(unittest.TestCase):
     def testJsonPOST(self):
         httpretty.register_uri(httpretty.POST,
                                'https://localhost/api/aaaLogin.json')
-        self.login.POST()
+        self.login.POST(format='json')
         (httpretty.last_request().method).should.equal('POST')
         (httpretty.last_request().path).should.equal('/api/aaaLogin.json')
         (httpretty.last_request().body).should.equal(self.login.Json)
@@ -277,13 +277,13 @@ class LoginRefreshTests(unittest.TestCase):
         self.login = pyaci.Node('https://localhost').methods.LoginRefresh
 
     def testCreation(self):
-        self.login._url().should.equal('https://localhost/api/aaaRefresh.json')
+        self.login._url().should.equal('https://localhost/api/aaaRefresh.xml')
 
     @httpretty.activate
     def testAaaUserJsonGET(self):
         httpretty.register_uri(httpretty.GET,
                                'https://localhost/api/aaaRefresh.json')
-        self.login.GET()
+        self.login.GET(format='json')
         (httpretty.last_request().method).should.equal('GET')
         (httpretty.last_request().path).should.equal('/api/aaaRefresh.json')
 
@@ -321,7 +321,7 @@ class MethodsTests(unittest.TestCase):
           "totalCount":"1"
         }
                                '''))
-        result = self.tree.polUni().fvTenant('mgmt').GET()
+        result = self.tree.polUni().fvTenant('mgmt').GET(format='json')
         (httpretty.last_request().method).should.equal('GET')
         (httpretty.last_request().path).should.equal(
             '/api/mo/uni/tn-mgmt.json'
@@ -386,7 +386,7 @@ class MethodsTests(unittest.TestCase):
     def testMoJsonDELETE(self):
         httpretty.register_uri(httpretty.DELETE,
                                'https://localhost/api/mo/uni/tn-test.json')
-        self.tree.polUni().fvTenant('test').DELETE()
+        self.tree.polUni().fvTenant('test').DELETE(format='json')
         (httpretty.last_request().method).should.equal('DELETE')
         (httpretty.last_request().path).should.equal(
             '/api/mo/uni/tn-test.json'
@@ -405,7 +405,7 @@ class MethodsTests(unittest.TestCase):
         httpretty.register_uri(httpretty.POST,
                                'https://localhost/api/mo/uni/tn-test.json')
         tenant = self.tree.polUni().fvTenant('test')
-        tenant.POST()
+        tenant.POST(format='json')
         (httpretty.last_request().method).should.equal('POST')
         (httpretty.last_request().path).should.equal(
             '/api/mo/uni/tn-test.json'
