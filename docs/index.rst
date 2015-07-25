@@ -3,20 +3,24 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to PyACI's documentation!
-=================================
+PyACI Documentation
+===================
 
-Contents:
+PyACI provides Python bindings for Cisco Application Centric
+Infrastructure REST API.
 
 .. toctree::
    :maxdepth: 2
 
+   user/introduction
+   user/constructs
+   user/installation
+   user/getting-started
 
 
-Indices and tables
+Indices and Tables
 ==================
 
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-
