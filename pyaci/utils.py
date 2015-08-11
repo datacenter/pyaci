@@ -94,7 +94,10 @@ def digestConfigExport(path, topRoot):
             if member.isreg() and member.name.endswith('.xml'):
                 logger.debug('Digesting file %s', member.name)
                 f = tar.extractfile(member)
-                topRoot.polUni().Xml = f.read()
+                if member.name.find('_idfile') != -1:
+                    topRoot.Xml = f.read()
+                else:
+                    topRoot.polUni().Xml = f.read()
 
 
 def distributeConfig(root, result=[]):
