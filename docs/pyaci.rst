@@ -28,14 +28,6 @@ pyaci.errors module
     :undoc-members:
     :show-inheritance:
 
-pyaci.metagen module
---------------------
-
-.. automodule:: pyaci.metagen
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 pyaci.options module
 --------------------
 

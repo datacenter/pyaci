@@ -1,6 +1,16 @@
-*.pyc
-.pyenv-version
+# Documentation
 docs/_build
-examples/.ipynb_checkpoints/
+
+# Tests.
 tests/.coverage
 tests/cover
+
+# Distribution
+*.egg-info/
+build
+dist
+
+# Miscelleneous
+*.pyc
+.pyenv-version
+examples/.ipynb_checkpoints/

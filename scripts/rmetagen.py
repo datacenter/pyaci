@@ -4,6 +4,7 @@ from __future__ import print_function
 from scp import SCPClient
 import argparse
 import getpass
+import inspect
 import os
 import paramiko
 
@@ -49,7 +50,10 @@ def main():
 
     print('Copying metagen.py to APIC')
     scp = SCPClient(ssh.get_transport())
-    scp.put('metagen.py', '/tmp/metagen.py')
+    filename = inspect.getframeinfo(inspect.currentframe()).filename
+    script_dir = os.path.dirname(os.path.abspath(filename))
+    metagen_path = os.path.join(script_dir, 'metagen.py')
+    scp.put(metagen_path, '/tmp/metagen.py')
 
     print('Invoking metagen.py on APIC')
     stdin, stdout, stderr = ssh.exec_command('python2.7 /tmp/metagen.py')
