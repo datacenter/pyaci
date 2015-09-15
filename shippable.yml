@@ -1,0 +1,12 @@
+language: python
+python:
+  - "2.7"
+  - "3.5"
+  - "pypy"
+
+install:
+  - "pip install -e .[doc,test]"
+
+script:
+  - "nosetests --with-coverage --cover-html --cover-package=pyaci"
+  - "make -C docs html"
