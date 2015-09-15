@@ -1,0 +1,708 @@
+{
+  "classes": {
+    "fvAEPg": {
+      "contains": {
+        "fvRsBd": ""
+      },
+      "identifiedBy": [
+        "name"
+      ],
+      "isAbstract": false,
+      "isConfigurable": true,
+      "isContextRoot": false,
+      "properties": {
+        "childAction": {
+          "isConfigurable": false
+        },
+        "configIssues": {
+          "isConfigurable": false
+        },
+        "configSt": {
+          "isConfigurable": false
+        },
+        "descr": {
+          "isConfigurable": true
+        },
+        "dn": {
+          "isConfigurable": false
+        },
+        "isAttrBasedEPg": {
+          "isConfigurable": true
+        },
+        "lcOwn": {
+          "isConfigurable": false
+        },
+        "matchT": {
+          "isConfigurable": true
+        },
+        "modTs": {
+          "isConfigurable": false
+        },
+        "monPolDn": {
+          "isConfigurable": false
+        },
+        "name": {
+          "isConfigurable": true
+        },
+        "pcTag": {
+          "isConfigurable": false
+        },
+        "prio": {
+          "isConfigurable": true
+        },
+        "rn": {
+          "isConfigurable": false
+        },
+        "scope": {
+          "isConfigurable": false
+        },
+        "status": {
+          "isConfigurable": false
+        },
+        "triggerSt": {
+          "isConfigurable": false
+        },
+        "txId": {
+          "isConfigurable": false
+        },
+        "uid": {
+          "isConfigurable": false
+        }
+      },
+      "rnFormat": "epg-{name}",
+      "rnMap": {
+        "rsbd": "fvRsBd"
+      }
+    },
+    "fvAp": {
+      "contains": {
+        "fvAEPg": ""
+      },
+      "identifiedBy": [
+        "name"
+      ],
+      "isAbstract": false,
+      "isConfigurable": true,
+      "isContextRoot": false,
+      "properties": {
+        "childAction": {
+          "isConfigurable": false
+        },
+        "descr": {
+          "isConfigurable": true
+        },
+        "dn": {
+          "isConfigurable": false
+        },
+        "lcOwn": {
+          "isConfigurable": false
+        },
+        "modTs": {
+          "isConfigurable": false
+        },
+        "monPolDn": {
+          "isConfigurable": false
+        },
+        "name": {
+          "isConfigurable": true
+        },
+        "ownerKey": {
+          "isConfigurable": true
+        },
+        "ownerTag": {
+          "isConfigurable": true
+        },
+        "prio": {
+          "isConfigurable": true
+        },
+        "rn": {
+          "isConfigurable": false
+        },
+        "status": {
+          "isConfigurable": false
+        },
+        "uid": {
+          "isConfigurable": false
+        }
+      },
+      "rnFormat": "ap-{name}",
+      "rnMap": {
+        "epg-": "fvAEPg"
+      }
+    },
+    "fvBD": {
+      "contains": {
+        "fvRsCtx": ""
+      },
+      "identifiedBy": [
+        "name"
+      ],
+      "isAbstract": false,
+      "isConfigurable": true,
+      "isContextRoot": false,
+      "properties": {
+        "arpFlood": {
+          "isConfigurable": true
+        },
+        "bcastP": {
+          "isConfigurable": false
+        },
+        "childAction": {
+          "isConfigurable": false
+        },
+        "descr": {
+          "isConfigurable": true
+        },
+        "dn": {
+          "isConfigurable": false
+        },
+        "epMoveDetectMode": {
+          "isConfigurable": true
+        },
+        "lcOwn": {
+          "isConfigurable": false
+        },
+        "limitIpLearnToSubnets": {
+          "isConfigurable": true
+        },
+        "llAddr": {
+          "isConfigurable": true
+        },
+        "mac": {
+          "isConfigurable": true
+        },
+        "modTs": {
+          "isConfigurable": false
+        },
+        "monPolDn": {
+          "isConfigurable": false
+        },
+        "mtu": {
+          "isConfigurable": false
+        },
+        "multiDstPktAct": {
+          "isConfigurable": true
+        },
+        "name": {
+          "isConfigurable": true
+        },
+        "ownerKey": {
+          "isConfigurable": true
+        },
+        "ownerTag": {
+          "isConfigurable": true
+        },
+        "pcTag": {
+          "isConfigurable": false
+        },
+        "rn": {
+          "isConfigurable": false
+        },
+        "scope": {
+          "isConfigurable": false
+        },
+        "seg": {
+          "isConfigurable": false
+        },
+        "status": {
+          "isConfigurable": false
+        },
+        "uid": {
+          "isConfigurable": false
+        },
+        "unicastRoute": {
+          "isConfigurable": true
+        },
+        "unkMacUcastAct": {
+          "isConfigurable": true
+        },
+        "unkMcastAct": {
+          "isConfigurable": true
+        },
+        "vmac": {
+          "isConfigurable": true
+        }
+      },
+      "rnFormat": "BD-{name}",
+      "rnMap": {
+        "rsctx": "fvRsCtx"
+      }
+    },
+    "fvCtx": {
+      "contains": {},
+      "identifiedBy": [
+        "name"
+      ],
+      "isAbstract": false,
+      "isConfigurable": true,
+      "isContextRoot": false,
+      "properties": {
+        "childAction": {
+          "isConfigurable": false
+        },
+        "descr": {
+          "isConfigurable": true
+        },
+        "dn": {
+          "isConfigurable": false
+        },
+        "knwMcastAct": {
+          "isConfigurable": true
+        },
+        "lcOwn": {
+          "isConfigurable": false
+        },
+        "modTs": {
+          "isConfigurable": false
+        },
+        "monPolDn": {
+          "isConfigurable": false
+        },
+        "name": {
+          "isConfigurable": true
+        },
+        "ownerKey": {
+          "isConfigurable": true
+        },
+        "ownerTag": {
+          "isConfigurable": true
+        },
+        "pcEnfPref": {
+          "isConfigurable": true
+        },
+        "pcTag": {
+          "isConfigurable": false
+        },
+        "rn": {
+          "isConfigurable": false
+        },
+        "scope": {
+          "isConfigurable": false
+        },
+        "seg": {
+          "isConfigurable": false
+        },
+        "status": {
+          "isConfigurable": false
+        },
+        "uid": {
+          "isConfigurable": false
+        }
+      },
+      "rnFormat": "ctx-{name}",
+      "rnMap": {}
+    },
+    "fvEpP": {
+      "contains": {},
+      "identifiedBy": [
+        "epgPKey"
+      ],
+      "isAbstract": false,
+      "isConfigurable": false,
+      "isContextRoot": true,
+      "properties": {
+        "bdDefDn": {
+          "isConfigurable": false
+        },
+        "bdDefStQual": {
+          "isConfigurable": false
+        },
+        "childAction": {
+          "isConfigurable": false
+        },
+        "crtrnEnabled": {
+          "isConfigurable": false
+        },
+        "ctxDefDn": {
+          "isConfigurable": false
+        },
+        "ctxDefStQual": {
+          "isConfigurable": false
+        },
+        "ctxSeg": {
+          "isConfigurable": false
+        },
+        "deplSt": {
+          "isConfigurable": false
+        },
+        "descr": {
+          "isConfigurable": true
+        },
+        "dn": {
+          "isConfigurable": false
+        },
+        "enfPref": {
+          "isConfigurable": false
+        },
+        "epgDn": {
+          "isConfigurable": false
+        },
+        "epgName": {
+          "isConfigurable": false
+        },
+        "epgPKey": {
+          "isConfigurable": true
+        },
+        "l2FDSeg": {
+          "isConfigurable": false
+        },
+        "l3CtxEncap": {
+          "isConfigurable": false
+        },
+        "lcOwn": {
+          "isConfigurable": false
+        },
+        "modTs": {
+          "isConfigurable": false
+        },
+        "monPolDn": {
+          "isConfigurable": false
+        },
+        "name": {
+          "isConfigurable": true
+        },
+        "npName": {
+          "isConfigurable": false
+        },
+        "operSt": {
+          "isConfigurable": false
+        },
+        "ownerKey": {
+          "isConfigurable": true
+        },
+        "ownerTag": {
+          "isConfigurable": true
+        },
+        "pcTag": {
+          "isConfigurable": false
+        },
+        "prio": {
+          "isConfigurable": false
+        },
+        "rn": {
+          "isConfigurable": false
+        },
+        "scopeId": {
+          "isConfigurable": false
+        },
+        "status": {
+          "isConfigurable": false
+        },
+        "tName": {
+          "isConfigurable": false
+        }
+      },
+      "rnFormat": "fv-[{epgPKey}]",
+      "rnMap": {}
+    },
+    "fvEpPCont": {
+      "contains": {
+        "fvEpP": ""
+      },
+      "identifiedBy": [],
+      "isAbstract": false,
+      "isConfigurable": false,
+      "isContextRoot": false,
+      "properties": {
+        "childAction": {
+          "isConfigurable": false
+        },
+        "dn": {
+          "isConfigurable": false
+        },
+        "lcOwn": {
+          "isConfigurable": false
+        },
+        "modTs": {
+          "isConfigurable": false
+        },
+        "monPolDn": {
+          "isConfigurable": false
+        },
+        "name": {
+          "isConfigurable": true
+        },
+        "ownerKey": {
+          "isConfigurable": true
+        },
+        "ownerTag": {
+          "isConfigurable": true
+        },
+        "rn": {
+          "isConfigurable": false
+        },
+        "status": {
+          "isConfigurable": false
+        }
+      },
+      "rnFormat": "epp",
+      "rnMap": {
+        "fv-": "fvEpP"
+      }
+    },
+    "fvRsBd": {
+      "contains": {},
+      "identifiedBy": [],
+      "isAbstract": false,
+      "isConfigurable": true,
+      "isContextRoot": false,
+      "properties": {
+        "childAction": {
+          "isConfigurable": false
+        },
+        "dn": {
+          "isConfigurable": false
+        },
+        "forceResolve": {
+          "isConfigurable": false
+        },
+        "lcOwn": {
+          "isConfigurable": false
+        },
+        "modTs": {
+          "isConfigurable": false
+        },
+        "monPolDn": {
+          "isConfigurable": false
+        },
+        "rType": {
+          "isConfigurable": false
+        },
+        "rn": {
+          "isConfigurable": false
+        },
+        "state": {
+          "isConfigurable": false
+        },
+        "stateQual": {
+          "isConfigurable": false
+        },
+        "status": {
+          "isConfigurable": false
+        },
+        "tCl": {
+          "isConfigurable": false
+        },
+        "tContextDn": {
+          "isConfigurable": false
+        },
+        "tDn": {
+          "isConfigurable": false
+        },
+        "tRn": {
+          "isConfigurable": false
+        },
+        "tType": {
+          "isConfigurable": false
+        },
+        "tnFvBDName": {
+          "isConfigurable": true
+        },
+        "uid": {
+          "isConfigurable": false
+        }
+      },
+      "rnFormat": "rsbd",
+      "rnMap": {}
+    },
+    "fvRsCtx": {
+      "contains": {},
+      "identifiedBy": [],
+      "isAbstract": false,
+      "isConfigurable": true,
+      "isContextRoot": false,
+      "properties": {
+        "childAction": {
+          "isConfigurable": false
+        },
+        "dn": {
+          "isConfigurable": false
+        },
+        "forceResolve": {
+          "isConfigurable": false
+        },
+        "lcOwn": {
+          "isConfigurable": false
+        },
+        "modTs": {
+          "isConfigurable": false
+        },
+        "monPolDn": {
+          "isConfigurable": false
+        },
+        "rType": {
+          "isConfigurable": false
+        },
+        "rn": {
+          "isConfigurable": false
+        },
+        "state": {
+          "isConfigurable": false
+        },
+        "stateQual": {
+          "isConfigurable": false
+        },
+        "status": {
+          "isConfigurable": false
+        },
+        "tCl": {
+          "isConfigurable": false
+        },
+        "tContextDn": {
+          "isConfigurable": false
+        },
+        "tDn": {
+          "isConfigurable": false
+        },
+        "tRn": {
+          "isConfigurable": false
+        },
+        "tType": {
+          "isConfigurable": false
+        },
+        "tnFvCtxName": {
+          "isConfigurable": true
+        },
+        "uid": {
+          "isConfigurable": false
+        }
+      },
+      "rnFormat": "rsctx",
+      "rnMap": {}
+    },
+    "fvTenant": {
+      "contains": {
+        "fvAp": "",
+        "fvBD": "",
+        "fvCtx": ""
+      },
+      "identifiedBy": [
+        "name"
+      ],
+      "isAbstract": false,
+      "isConfigurable": true,
+      "isContextRoot": true,
+      "properties": {
+        "childAction": {
+          "isConfigurable": false
+        },
+        "descr": {
+          "isConfigurable": true
+        },
+        "dn": {
+          "isConfigurable": false
+        },
+        "lcOwn": {
+          "isConfigurable": false
+        },
+        "modTs": {
+          "isConfigurable": false
+        },
+        "monPolDn": {
+          "isConfigurable": false
+        },
+        "name": {
+          "isConfigurable": true
+        },
+        "ownerKey": {
+          "isConfigurable": true
+        },
+        "ownerTag": {
+          "isConfigurable": true
+        },
+        "rn": {
+          "isConfigurable": false
+        },
+        "status": {
+          "isConfigurable": false
+        },
+        "uid": {
+          "isConfigurable": false
+        }
+      },
+      "rnFormat": "tn-{name}",
+      "rnMap": {
+        "BD-": "fvBD",
+        "ap-": "fvAp",
+        "ctx-": "fvCtx"
+      }
+    },
+    "polUni": {
+      "contains": {
+        "fvEpPCont": "",
+        "fvTenant": ""
+      },
+      "identifiedBy": [],
+      "isAbstract": false,
+      "isConfigurable": true,
+      "isContextRoot": false,
+      "properties": {
+        "childAction": {
+          "isConfigurable": false
+        },
+        "dn": {
+          "isConfigurable": false
+        },
+        "lcOwn": {
+          "isConfigurable": false
+        },
+        "modTs": {
+          "isConfigurable": false
+        },
+        "monPolDn": {
+          "isConfigurable": false
+        },
+        "name": {
+          "isConfigurable": false
+        },
+        "ownerKey": {
+          "isConfigurable": false
+        },
+        "ownerTag": {
+          "isConfigurable": false
+        },
+        "rn": {
+          "isConfigurable": false
+        },
+        "status": {
+          "isConfigurable": false
+        },
+        "uid": {
+          "isConfigurable": false
+        }
+      },
+      "rnFormat": "uni",
+      "rnMap": {
+        "epp": "fvEpPCont",
+        "tn-": "fvTenant"
+      }
+    },
+    "topRoot": {
+      "contains": {
+        "polUni": ""
+      },
+      "identifiedBy": [],
+      "isAbstract": false,
+      "isConfigurable": true,
+      "isContextRoot": false,
+      "properties": {
+        "childAction": {
+          "isConfigurable": false
+        },
+        "dn": {
+          "isConfigurable": false
+        },
+        "rn": {
+          "isConfigurable": false
+        },
+        "status": {
+          "isConfigurable": false
+        }
+      },
+      "rnFormat": "",
+      "rnMap": {
+        "uni": "polUni"
+      }
+    }
+  }
+}

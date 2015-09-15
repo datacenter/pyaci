@@ -1,12 +1,17 @@
 language: python
 python:
-  - "2.7"
-  - "3.5"
-  - "pypy"
+  - 2.7
+
+before_script:
+  - mkdir -p shippable/testresults
+  - mkdir -p shippable/codecoverage
 
 install:
-  - "pip install -e .[doc,test]"
+  - pip install -e .[doc,test]
+  - mkdir ~/.aci-meta
+  - cp meta/aci-meta.limited.json ~/.aci-meta/aci-meta.json
 
 script:
-  - "nosetests --with-coverage --cover-html --cover-package=pyaci"
-  - "make -C docs html"
+  - nosetests --with-coverage --cover-html --cover-package=pyaci --with-xunit --xunit-file=shippable/testresults/nosetests.xml
+  - coverage xml -o shippable/codecoverage/coverage.xml
+  - make -C docs html
