@@ -288,6 +288,49 @@ class LoginRefreshTests(unittest.TestCase):
         (httpretty.last_request().path).should.equal('/api/aaaRefresh.json')
 
 
+class ResolveClassTests(unittest.TestCase):
+    def setUp(self):
+        self.resolve = pyaci.Node('https://localhost').methods.ResolveClass('fvTenant')
+
+    def testCreation(self):
+        self.resolve._url().should.equal('https://localhost/api/class/fvTenant.xml')
+
+    @httpretty.activate
+    def testJsonGET(self):
+        httpretty.register_uri(httpretty.GET,
+                               'https://localhost/api/class/fvTenant.json',
+                               body=textwrap.dedent('''\
+        {
+          "imdata":[
+            {
+              "fvTenant":{
+                "attributes":{
+                  "childAction":"",
+                  "descr":"Test",
+                  "dn":"uni/tn-mgmt",
+                  "lcOwn":"local",
+                  "modTs":"2014-10-14T04:15:15.589+00:00",
+                  "monPolDn":"uni/tn-common/monepg-default",
+                  "name":"mgmt",
+                  "ownerKey":"",
+                  "ownerTag":"",
+                  "status":"",
+                  "uid":"0"
+                }
+              }
+            }
+          ],
+          "totalCount":"1"
+        }
+                               '''))
+        result = self.resolve.GET(format='json')
+        (httpretty.last_request().method).should.equal('GET')
+        (httpretty.last_request().path).should.equal('/api/class/fvTenant.json')
+        result.shouldnt.be.empty
+        tenant = result[0]
+        tenant.name.should.equal('mgmt')
+
+
 class MethodsTests(unittest.TestCase):
     def setUp(self):
         self.url = 'https://localhost'

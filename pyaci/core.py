@@ -626,6 +626,33 @@ class UploadPackageMethod(Api):
         return response
 
 
+class ResolveClassMethod(Api):
+    def __init__(self, parentApi):
+        super(ResolveClassMethod, self).__init__(parentApi=parentApi)
+
+    @property
+    def _relativeUrl(self):
+        return 'class/' + self._className
+
+    def __call__(self, className):
+        self._className = className
+        return self
+
+    def GET(self, format=None, **kwargs):
+        if format is None:
+            format = payloadFormat
+
+        topRoot = self._rootApi().mit
+        response = super(ResolveClassMethod, self).GET(format, **kwargs)
+        if format == 'json':
+            result = topRoot.ParseJsonResponse(response.text)
+        elif format == 'xml':
+            result = topRoot.ParseXmlResponse(response.text)
+
+        topRoot.ReadOnlyTree = True
+        return result
+
+
 class MethodApi(Api):
     def __init__(self, parentApi):
         super(MethodApi, self).__init__(parentApi=parentApi)
@@ -649,3 +676,7 @@ class MethodApi(Api):
     @property
     def UploadPackage(self):
         return UploadPackageMethod(parentApi=self)
+
+    @property
+    def ResolveClass(self):
+        return ResolveClassMethod(parentApi=self)
