@@ -1,106 +1,109 @@
 <!doctype html>
-<style>
-body {
-  font-family: Georgia, serif;
-}
-
-p.counter {
-  font-size: 1.3em;
-}
-
-table.mo {
-  border-collapse: collapse;
-  width: 100%;
-}
-
-table.mo th:first-child {
-    border-radius: 24px 0 0 0;
-}
-
-table.mo th:last-child {
-    border-radius: 0 24px 0 0;
-}
-
-table.mo th:only-child{
-    border-radius: 24px 24px 0 0;
-}
-
-table.mo th,
-table.mo td {
-  font-size: 1em;
-  padding: 5px 7px 5px 7px;
-}
-
-table.mo th {
-  font-size: 1.1em;
-  padding-top: 5px;
-  padding-bottom: 4px;
-  background-color: #2980b9;
-  color: #ffffff;
-}
-
-table.mo td {
-  border-top: 1px solid #aaa;
-}
-
-table.mo td.key {
-  color: #909090;
-  font-size: 0.9em;
-  font-style: italic;
-  border-top: 1px solid #aaa;
-}
-
-table.mo tr.odd td {
-  background-color: #e5e5e5;
-}
-
-table.mo tr.even td {
-  background-color: #f5f5f5;
-}
-
-table.mo a:link {
-	color: #336699;
-	font-weight: bold;
-	text-decoration:none;
-}
-
-table.mo a:visited {
-	color: #707070;
-	font-weight:bold;
-	text-decoration:none;
-}
-
-table.mo a:active,
-table.mo a:hover {
-	color: #000;
-	text-decoration:underline;
-}
-
-table.mo a.symbol:hover {
-  text-decoration: none;
-}
-
-table.mo th a:link {
-	color: #f0f0f0;
-	font-weight: bold;
-	text-decoration:none;
-}
-
-table.mo th a:visited {
-	color: #c5c5c5;
-	font-weight:bold;
-	text-decoration:none;
-}
-
-table.mo th a:active,
-table.mo th a:hover {
-	color: #fff;
-	text-decoration:underline;
-}
-
-</style>
-
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <title>PyACI MIT Query</title>
+<script>
+  function dnQuery() {
+    var index = document.getElementById('index-input').value;
+    location = '/' + index + '/dn/' + document.getElementById('dn-input').value;
+    return false;
+  }
+
+  function classQuery() {
+    var index = document.getElementById('index-input').value;
+    location = '/' + index + '/class/' + document.getElementById('class-input').value;
+    return false;
+  }
+</script>
+<table class="query">
+  <tr>
+    <td class="top">
+      <form id="index-selector">
+        <table width="100%">
+          <tbody>
+            <tr>
+              <td align="right">
+                <select id="index-input" name="index-input">
+                  {% for name in indices %}
+                  {% if name == indexName %}
+                  <option value="{{ name }}" selected="selected">{{ name }}</option>
+                  {% else %}
+                  <option value="{{ name }}">{{ name }}</option>
+                  {% endif %}
+                  {% endfor %}
+                </select>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </form>
+    </td>
+  </tr>
+
+  <tr>
+    <td>
+      <form id="dn-query" onsubmit="return dnQuery();">
+        <fieldset>
+          <legend>DN Query</legend>
+          <table>
+            <tbody>
+              <tr>
+                <td><label class="primary" for="dn-input">DN</label></td>
+                {% if currentDn %}
+                <td><input id="dn-input" name="dn-input" type="text" size="70" value="{{ currentDn }}" autofocus onfocus="this.value = this.value;"></td>
+                {% else %}
+                <td><input id="dn-input" name="dn-input" type="text" size="70"></td>
+                {% endif %}
+                <td><input type="submit" class="submit" value="Submit"></td>
+              </tr>
+            </tbody>
+          </table>
+        </fieldset>
+      </form>
+    </td>
+  </tr>
+
+  <tr>
+    <td class="bottom">
+      <form id="class-query" onsubmit="return classQuery();">
+        <fieldset>
+          <legend>Class Query</legend>
+          <table>
+            <tbody>
+              <tr>
+                <td> <label class="primary" for="class-input">Class Name</label> </td>
+                {% if currentClassName %}
+                <td colspan="6"><input id="class-input" name="class-input" type="text" size="70" value="{{ currentClassName }}" autofocus onfocus="this.value = this.value;"></td>
+                {% else %}
+                <td colspan="6"><input id="class-input" name="class-input" type="text" size="70" value="{{ currentClassName }}" autofocus></td>
+                {% endif %}
+              </tr>
+              <tr>
+                <td> <label for="property-input">Property</label> </td>
+                <td> <input id="property-input" name="property-input" type="text" disabled> </td>
+                <td> <label for="op-input">Op</label> </td>
+                <td>
+                  <select id="op-input" name="op-input" disabled>
+                    <option value="eq">==</option>
+                    <option value="ne">!=</option>
+                    <option value="lt">&lt;</option>
+                    <option value="le">&lt;=</option>
+                    <option value="gt">&gt;</option>
+                    <option value="ge">&gt;=</option>
+                    <option value="contains">contains</option>
+                  </select>
+                </td>
+                <td><label for="value-input">Value</label></td>
+                <td><input id="value-input" name="value-input" type="text" disabled></td>
+                <td><input type="submit" value="Submit"></td>
+              </tr>
+            </tbody>
+          </table>
+        </fieldset>
+      </form>
+    </td>
+  </tr>
+</table>
+
 <table>
   <thead>
     <tr>

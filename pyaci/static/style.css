@@ -1,0 +1,162 @@
+body {
+    font-family: Georgia, serif;
+}
+
+p.counter {
+    font-size: 1.3em;
+}
+
+table.mo {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+table.mo th:first-child {
+    border-radius: 12px 0 0 0;
+}
+
+table.mo th:last-child {
+    border-radius: 0 12px 0 0;
+}
+
+table.mo th:only-child{
+    border-radius: 12px 12px 0 0;
+}
+
+table.mo th, table.mo td {
+    font-size: 1em;
+    padding: 5px 7px 5px 7px;
+}
+
+table.mo th {
+    font-size: 1.1em;
+    padding-top: 5px;
+    padding-bottom: 4px;
+    background-color: #2980b9;
+    color: #ffffff;
+}
+
+table.mo td {
+    border-top: 1px solid #aaa;
+}
+
+table.mo td.key {
+    color: #909090;
+    font-size: 0.9em;
+    font-style: italic;
+    border-top: 1px solid #aaa;
+}
+
+table.mo tr.odd td {
+    background-color: #e5e5e5;
+}
+
+table.mo tr.even td {
+    background-color: #f5f5f5;
+}
+
+table.mo a:link {
+	  color: #336699;
+	  font-weight: bold;
+	  text-decoration:none;
+}
+
+table.mo a:visited {
+	  color: #707070;
+	  font-weight:bold;
+	  text-decoration:none;
+}
+
+table.mo a:active, table.mo a:hover {
+	  color: #000;
+	  text-decoration:underline;
+}
+
+table.mo a.symbol:hover {
+    text-decoration: none;
+}
+
+table.mo th a:link {
+	  color: #f0f0f0;
+	  font-weight: bold;
+	  text-decoration:none;
+}
+
+table.mo th a:visited {
+	  color: #c5c5c5;
+	  font-weight:bold;
+	  text-decoration:none;
+}
+
+table.mo th a:active, table.mo th a:hover {
+	  color: #fff;
+	  text-decoration:underline;
+}
+
+table.query {
+    border-collapse: collapse;
+    width: 100%;
+    font-size: 1.1em;
+}
+
+table.query td {
+    background-color: #2980b9;
+    color: #fff;
+    padding: 5px 7px 5px 7px;
+}
+
+table.query td.top {
+    border-radius: 12px 12px 0px 0px;
+}
+
+table.query td.bottom {
+    /* border-radius: 0px 0px 12px 12px; */
+}
+
+table.query fieldset {
+    border:1px solid white;
+    border-radius: 12px 12px 0px 0px;
+}
+
+table.query legend {
+    padding: 0.2em 0.5em;
+    border:1px solid white;
+    border-radius: 12px 12px 0px 0px;
+    /* border-radius: 12px 12px 12px 12px; */
+    color:white;
+    font-size:90%;
+    font-weight: bold;
+}
+
+table.query label.primary {
+    display: block;
+    width: 100px;
+}
+
+table.query input[type="text"]
+{
+    border:2px solid #dadada;
+    border-radius:7px;
+    font-size:0.8em;
+    padding:5px;
+}
+
+table.query input[type="text"]:focus { 
+    outline:none;
+    border-color:#505050;
+    box-shadow:0 0 10px #9ecaed;
+}
+
+table.query input[type="submit"]
+{
+    /* -webkit-appearance: none; */
+    /* -moz-appearance: none; */
+    /* appearance: none; */
+    /* -moz-border-radius: 5px; */
+    /* border-radius: 5px; */
+    /* border:solid 1px #000; */
+    /* padding:5px; */
+    font-size: 1em;
+    /* font-weight: bold; */
+    /* background-color: #f0f0f0; */
+}
