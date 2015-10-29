@@ -208,6 +208,7 @@ class MoIter(Api):
     def __init__(self, parentApi, className, objects):
         self._parentApi = parentApi
         self._className = className
+        assert isinstance(objects, dict)
         self._objects = objects
         self._aciClassMeta = aciClassMetas[self._className]
         self._rnFormat = self._aciClassMeta['rnFormat']
@@ -330,6 +331,14 @@ class Mo(Api):
     @property
     def Children(self):
         return self._children.itervalues()
+
+    @property
+    def PropertyNames(self):
+        return sorted(self._properties.keys())
+
+    @property
+    def NonEmptyPropertyNames(self):
+        return sorted([k for k, v in self._properties.items() if v is not None])
 
     @property
     def Json(self):
@@ -478,7 +487,7 @@ class Mo(Api):
 
     def _addChild(self, className, rn, child):
         self._children[rn] = child
-        self._childrenByClass[rn] = child
+        self._childrenByClass[className][rn] = child
 
     def _spawnChildFromRn(self, className, rn):
         # TODO: Refactor.
@@ -489,6 +498,8 @@ class Mo(Api):
                           format(rn, moIter._rnFormat))
             # FIXME (2015-04-08, Praveen Kumar): Hack alert!
             rn = rn.replace('[]', '[None]')
+            if rn.endswith('-'):
+                rn = rn + 'None'
             parsed = parse.parse(moIter._rnFormat, rn)
         identifierDict = parsed.named
         orderedIdentifiers = [

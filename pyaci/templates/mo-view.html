@@ -1,0 +1,146 @@
+<!doctype html>
+<style>
+body {
+  font-family: Georgia, serif;
+}
+
+p.counter {
+  font-size: 1.3em;
+}
+
+table.mo {
+  border-collapse: collapse;
+  width: 100%;
+}
+
+table.mo th:first-child {
+    border-radius: 24px 0 0 0;
+}
+
+table.mo th:last-child {
+    border-radius: 0 24px 0 0;
+}
+
+table.mo th:only-child{
+    border-radius: 24px 24px 0 0;
+}
+
+table.mo th,
+table.mo td {
+  font-size: 1em;
+  padding: 5px 7px 5px 7px;
+}
+
+table.mo th {
+  font-size: 1.1em;
+  padding-top: 5px;
+  padding-bottom: 4px;
+  background-color: #2980b9;
+  color: #ffffff;
+}
+
+table.mo td {
+  border-top: 1px solid #aaa;
+}
+
+table.mo td.key {
+  color: #909090;
+  font-size: 0.9em;
+  font-style: italic;
+  border-top: 1px solid #aaa;
+}
+
+table.mo tr.odd td {
+  background-color: #e5e5e5;
+}
+
+table.mo tr.even td {
+  background-color: #f5f5f5;
+}
+
+table.mo a:link {
+	color: #336699;
+	font-weight: bold;
+	text-decoration:none;
+}
+
+table.mo a:visited {
+	color: #707070;
+	font-weight:bold;
+	text-decoration:none;
+}
+
+table.mo a:active,
+table.mo a:hover {
+	color: #000;
+	text-decoration:underline;
+}
+
+table.mo a.symbol:hover {
+  text-decoration: none;
+}
+
+table.mo th a:link {
+	color: #f0f0f0;
+	font-weight: bold;
+	text-decoration:none;
+}
+
+table.mo th a:visited {
+	color: #c5c5c5;
+	font-weight:bold;
+	text-decoration:none;
+}
+
+table.mo th a:active,
+table.mo th a:hover {
+	color: #fff;
+	text-decoration:underline;
+}
+
+</style>
+
+<title>PyACI MIT Query</title>
+<table>
+  <thead>
+    <tr>
+      <td><p class="counter">Total objects: {{ mos|length }}</p></td>
+    </tr>
+  </thead>
+  <tfoot>
+  </tfoot>
+  <tbody>
+  {% for mo in mos %}
+  {% set dn = mo.Dn %}
+    <tr>
+      <td>
+        <table class="mo">
+          <thead>
+            <tr>
+              <th colspan="2">
+                <a href="/{{ indexName }}/class/{{ mo.ClassName }}">{{ mo.ClassName }}</a><br/>
+                <a href="/{{ indexName }}/dn/{{ dn }}">{{ dn }}</a> <a class="symbol" href="/{{ indexName }}/dn/{{ dn|parentDn }}">▲</a><a class="symbol" href="/{{ indexName }}/dn/{{ dn }}?rsp-subtree=children">▼</a>
+              </th>
+            </tr>
+          </thead>
+          <tbody>
+          {% for name in mo.NonEmptyPropertyNames %}
+          {% set value = mo.__getattr__(name) %}
+          {% if value == None and name == 'dn' %}
+          {% set value = mo.Dn %}
+          {% endif %}
+            <tr class="{{ loop.cycle('odd', 'even') }}">
+              <td class="key"> {{ name }} </td>
+              {% if value is Dn %}
+              <td> <a href="/{{ indexName }}/dn/{{ value }}">{{ value }}</a> <a class="symbol" href="/{{ indexName }}/dn/{{ value|parentDn }}">▲</a><a class="symbol" href="/{{ indexName }}/dn/{{ value }}?rsp-subtree=children">▼</a></td>
+              {% else %}
+              <td> {{ value }} </td>
+              {% endif %}
+            </tr>
+          {% endfor %}
+        </table>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
