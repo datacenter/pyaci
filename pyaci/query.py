@@ -11,16 +11,19 @@ from collections import defaultdict
 from flask import Flask, request, render_template
 from flask.views import MethodView
 from .utils import getParentDn
+import operator
 import os
+import re
 
 
 # TODO: Move to core.
-def bfsMit(mit):
-    if mit.ClassName != 'topRoot':
+def bfsMit(mit, predicate=lambda mo: True):
+    if mit.ClassName != 'topRoot' and predicate(mit):
         yield mit
     for child in mit._children.values():
         for mo in bfsMit(child):
-            yield mo
+            if predicate(mo):
+                yield mo
 
 
 def isDn(value):
@@ -61,6 +64,27 @@ class Index(object):
 
     def queryByClass(self, className, **kwargs):
         # TODO: Handle invalid class names.
+        queryTargetFilter = kwargs.get('query-target-filter', [])
+        if queryTargetFilter:
+            try:
+                match = re.match('(.*)\((.*),"(.*)"\)', queryTargetFilter[0])
+                if match:
+                    op = match.group(1)
+                    propName = match.group(2)
+                    tokens = propName.split('.')
+                    clName = tokens[0]
+                    propName = tokens[1]
+                    value = match.group(3)
+
+                    def pred(mo):
+                        if mo.ClassName != clName:
+                            return False
+                        return getattr(operator, op)(getattr(mo, propName),
+                                                     value)
+                    return filter(pred, self._objectsByClass[className])
+            except Exception as e:
+                print e
+
         return self._objectsByClass[className]
 
 
@@ -93,11 +117,27 @@ class DnView(AView):
 
 class ClassView(AView):
     def get(self, className):
-        result = self.index.queryByClass(className)
+        result = self.index.queryByClass(className, **request.args)
         return render_template('mo-view.html', mos=result,
                                indexName=self.index.name,
                                indices=self.appIndices,
                                currentClassName=className)
+
+
+class AuditView(AView):
+    def get(self, dn):
+        queryOpt = {
+            'query-target-filter': ['eq(aaaModLR.affected,"{}")'.format(dn)]
+        }
+        result = self.index.queryByClass('aaaModLR', **queryOpt)
+
+        def sortKey(mo):
+            return int(mo.txId)
+
+        return render_template('audit-view.html',
+                               mos=sorted(result, key=sortKey),
+                               indexName=self.index.name,
+                               indices=self.appIndices)
 
 
 class App(object):
@@ -128,6 +168,18 @@ class App(object):
                                         index, self),
             methods=['GET']
         )
+
+        if index.name == 'audit':
+            self._app.add_url_rule(
+                '/{}/affected/<path:dn>'.format(index.name),
+                view_func=AuditView.as_view(
+                    'affected_view_{}'.format(index.name),
+                    index, self),
+                methods=['GET']
+            )
+
+    def indices(self):
+        return self._indices
 
     def run(self, debug=False):
         self._app.debug = debug

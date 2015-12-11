@@ -1,0 +1,24 @@
+<!doctype html>
+<link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+<title>PyACI MIT Query</title>
+{% include "query.html" %}
+<p class="counter">Total objects: {{ mos|length }}</p>
+<table class="mo" width="100%">
+  <tbody>
+    <tr>
+      <th>Time</th>
+      <th>TX</th>
+      <th>Description</th>
+      <th>Changeset</th>
+    </tr>
+  {% for mo in mos %}
+  {% set dn = mo.Dn %}
+    <tr class="{{ loop.cycle('odd', 'even') }}">
+      <td>{{ mo.created }}</td>
+      <td>0x{{ mo.txId|int(base=16) }}</td>
+      <td>{{ mo.descr }}</td>
+      <td>{{ mo.changeSet }}</td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>

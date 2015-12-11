@@ -338,7 +338,16 @@ class Mo(Api):
 
     @property
     def NonEmptyPropertyNames(self):
-        return sorted([k for k, v in self._properties.items() if v is not None])
+        return sorted([k for k, v in self._properties.items()
+                       if v is not None])
+
+    @property
+    def IsConfigurable(self):
+        return self._aciClassMeta['isConfigurable']
+
+    def IsConfigurableProperty(self, name):
+        return (name in self._aciClassMeta['properties'] and
+                self._aciClassMeta['properties'][name]['isConfigurable'])
 
     @property
     def Json(self):
@@ -365,12 +374,37 @@ class Mo(Api):
 
         return etree.tostring(element(self), pretty_print=True)
 
+    def GetXml(self, elementPredicate=lambda mo: True,
+               propertyPredicate=lambda mo, name: True):
+        def element(mo, elementPredicate, propertyPredicate):
+            if not elementPredicate(mo):
+                return None
+
+            result = etree.Element(mo._className)
+
+            for key, value in mo._properties.items():
+                if value is not None:
+                    if propertyPredicate(mo, key):
+                        result.set(key, value)
+
+            for child in mo._children.values():
+                childElement = element(child, elementPredicate,
+                                       propertyPredicate)
+                if childElement is not None:
+                    result.append(childElement)
+
+            return result
+
+        return etree.tostring(element(self, elementPredicate,
+                                      propertyPredicate),
+                              pretty_print=True)
+
     @Xml.setter
     def Xml(self, value):
         xml = bytes(bytearray(value, encoding='utf-8'))
         self._fromXmlElement(etree.fromstring(xml))
 
-    def ParseXmlResponse(self, xml):
+    def ParseXmlResponse(self, xml, localOnly=False):
         # https://gist.github.com/karlcow/3258330
         xml = bytes(bytearray(xml, encoding='utf-8'))
         root = etree.fromstring(xml)
@@ -379,7 +413,7 @@ class Mo(Api):
         for element in root.iterchildren('*'):
             assert 'dn' in element.attrib
             mo = self.FromDn(element.attrib['dn'])
-            mo._fromXmlElement(element)
+            mo._fromXmlElement(element, localOnly=localOnly)
             mos.append(mo)
         return mos
 
@@ -430,8 +464,11 @@ class Mo(Api):
             child = self._spawnChildFromAttributes(className, **attributes)
             child._fromObjectDict(cdict)
 
-    def _fromXmlElement(self, element):
+    def _fromXmlElement(self, element, localOnly=False):
         assert element.tag == self._className
+
+        if localOnly and element.attrib.get('lcOwn', 'local') != 'local':
+            return
 
         for key, value in element.attrib.items():
             self._properties[key] = value
@@ -440,7 +477,7 @@ class Mo(Api):
             className = celement.tag
             attributes = celement.attrib
             child = self._spawnChildFromAttributes(className, **attributes)
-            child._fromXmlElement(celement)
+            child._fromXmlElement(celement, localOnly=localOnly)
 
     def _dataDict(self):
         data = {}

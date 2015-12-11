@@ -1,0 +1,113 @@
+<script>
+  function dnQuery() {
+    var index = document.getElementById('index-input').value;
+    location = '/' + index + '/dn/' + document.getElementById('dn-input').value;
+    return false;
+  }
+
+  function classQuery() {
+    var index = document.getElementById('index-input').value;
+    var className = document.getElementById('class-input').value;
+    var propName = document.getElementById('property-input').value;
+    var op = document.getElementById('op-input').value;
+    var value = document.getElementById('value-input').value;
+    var filter;
+    if (propName) {
+      filter = '?query-target-filter=' + op + '(' + className + '.' + propName + ',"' + value + '")';
+    }
+    else {
+      filter = '';
+    }
+    location = '/' + index + '/class/' + className + filter;
+    return false;
+  }
+</script>
+<table class="query">
+  <tr>
+    <td class="top">
+      <form id="index-selector">
+        <table width="100%">
+          <tbody>
+            <tr>
+              <td align="right">
+                <select id="index-input" name="index-input">
+                  {% for name in indices %}
+                  {% if name == indexName %}
+                  <option value="{{ name }}" selected="selected">{{ name }}</option>
+                  {% else %}
+                  <option value="{{ name }}">{{ name }}</option>
+                  {% endif %}
+                  {% endfor %}
+                </select>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </form>
+    </td>
+  </tr>
+
+  <tr>
+    <td>
+      <form id="dn-query" onsubmit="return dnQuery();">
+        <fieldset>
+          <legend>DN Query</legend>
+          <table>
+            <tbody>
+              <tr>
+                <td><label class="primary" for="dn-input">DN</label></td>
+                {% if currentDn %}
+                <td><input id="dn-input" name="dn-input" type="text" size="70" value="{{ currentDn }}" autofocus onfocus="this.value = this.value;"></td>
+                {% else %}
+                <td><input id="dn-input" name="dn-input" type="text" size="70"></td>
+                {% endif %}
+                <td><input type="submit" class="submit" value="Submit"></td>
+              </tr>
+            </tbody>
+          </table>
+        </fieldset>
+      </form>
+    </td>
+  </tr>
+
+  <tr>
+    <td class="bottom">
+      <form id="class-query" onsubmit="return classQuery();">
+        <fieldset>
+          <legend>Class Query</legend>
+          <table>
+            <tbody>
+              <tr>
+                <td> <label class="primary" for="class-input">Class Name</label> </td>
+                {% if currentClassName %}
+                <td colspan="6"><input id="class-input" name="class-input" type="text" size="70" value="{{ currentClassName }}" autofocus onfocus="this.value = this.value;"></td>
+                {% else %}
+                <td colspan="6"><input id="class-input" name="class-input" type="text" size="70" value="{{ currentClassName }}" autofocus></td>
+                {% endif %}
+              </tr>
+              <tr>
+                <td> <label for="property-input">Property</label> </td>
+                <td> <input id="property-input" name="property-input" type="text"> </td>
+                <td> <label for="op-input">Op</label> </td>
+                <td>
+                  <select id="op-input" name="op-input">
+                    <option value="eq">==</option>
+                    <option value="ne">!=</option>
+                    <option value="lt">&lt;</option>
+                    <option value="le">&lt;=</option>
+                    <option value="gt">&gt;</option>
+                    <option value="ge">&gt;=</option>
+                    <option value="contains">contains</option>
+                  </select>
+                </td>
+                <td><label for="value-input">Value</label></td>
+                <td><input id="value-input" name="value-input" type="text"></td>
+                <td><input type="submit" value="Submit"></td>
+              </tr>
+            </tbody>
+          </table>
+        </fieldset>
+      </form>
+    </td>
+  </tr>
+</table>
