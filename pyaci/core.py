@@ -333,6 +333,14 @@ class Mo(Api):
         return self._children.itervalues()
 
     @property
+    def Status(self):
+        return self._properties['status']
+
+    @Status.setter
+    def Status(self, value):
+        self._properties['status'] = value
+
+    @property
     def PropertyNames(self):
         return sorted(self._properties.keys())
 
