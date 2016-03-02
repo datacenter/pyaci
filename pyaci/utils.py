@@ -81,7 +81,7 @@ def readOnlyTree(mo):
         mo.ReadOnlyTree = readOnlyTreeOldValue
 
 
-def digestConfigExport(path, topRoot):
+def digestConfigExport(path, topRoot, format='xml'):
     """Digest an APIC config export file into the given topRoot.
 
     :param path: path to the config export file.
@@ -91,13 +91,22 @@ def digestConfigExport(path, topRoot):
     with tarfile.open(path, 'r') as tar:
         for member in tar:
             logger.debug('Processing member %s', member.name)
-            if member.isreg() and member.name.endswith('.xml'):
+            if member.isreg() and ((member.name.endswith('.xml') and
+                                    format == 'xml') or
+                                   (member.name.endswith('.json') and
+                                    format == 'json')):
                 logger.debug('Digesting file %s', member.name)
                 f = tar.extractfile(member)
                 if member.name.find('_idfile') != -1:
-                    topRoot.Xml = f.read()
+                    if format == 'xml':
+                        topRoot.Xml = f.read()
+                    elif format == 'json':
+                        topRoot.Json = f.read()
                 else:
-                    topRoot.polUni().Xml = f.read()
+                    if format == 'xml':
+                        topRoot.polUni().Xml = f.read()
+                    elif format == 'json':
+                        topRoot.polUni().Json = f.read()
 
 
 def distributeConfig(root, result=[]):
