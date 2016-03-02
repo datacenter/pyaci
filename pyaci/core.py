@@ -181,6 +181,12 @@ class Node(Api):
         else:
             self._apiUrlComponent = 'api'
 
+    def toggleDebugApi(self, shouldEnable, dme='policymgr'):
+        if shouldEnable:
+            self._apiUrlComponent = 'debugapi/{}'.format(dme)
+        else:
+            self._apiUrlComponent = 'api'
+
     @property
     def mit(self):
         return Mo(self, 'topRoot')
