@@ -63,8 +63,8 @@ class Api(object):
     def DELETE(self, format=None):
         return self._performRequest('DELETE', format=format)
 
-    def POST(self, format=None):
-        return self._performRequest('POST', format=format, needData=True)
+    def POST(self, format=None, **kwargs):
+        return self._performRequest('POST', format=format, needData=True, **kwargs)
 
     def _url(self, format=None, **kwargs):
         if format is None:
