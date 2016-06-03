@@ -40,6 +40,9 @@ setup(
 
     packages=find_packages(exclude=['docs', 'examples', 'tests']),
 
+    # Install files from MANIFEST.in.
+    include_package_data=True,
+
     # List run-time dependencies here.  These will be installed by pip when
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
