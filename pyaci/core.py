@@ -426,7 +426,10 @@ class Mo(Api):
         mos = []
         for element in root.iterchildren('*'):
             assert 'dn' in element.attrib
-            mo = self.FromDn(element.attrib['dn'])
+            if element.tag == 'moCount':
+                mo = self.moCount()
+            else:
+                mo = self.FromDn(element.attrib['dn'])
             mo._fromXmlElement(element, localOnly=localOnly)
             mos.append(mo)
         return mos
@@ -479,6 +482,15 @@ class Mo(Api):
             child._fromObjectDict(cdict)
 
     def _fromXmlElement(self, element, localOnly=False):
+        # if element.tag == 'moCount':
+            # className = 'moCount'
+            # attributes = element.attrib
+            # print attributes
+            # child = self._spawnChildFromAttributes(className, **attributes)
+            # child._fromXmlElement(element, localOnly=localOnly)
+            # return
+            # self._className = 'moCount'
+
         assert element.tag == self._className
 
         if localOnly and element.attrib.get('lcOwn', 'local') != 'local':
