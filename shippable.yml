@@ -7,6 +7,7 @@ before_script:
   - mkdir -p shippable/codecoverage
 
 install:
+  - pip install -U pip
   - pip install -e .[doc,test]
   - mkdir ~/.aci-meta
   - cp meta/aci-meta.limited.json ~/.aci-meta/aci-meta.json
