@@ -11,6 +11,7 @@ from OpenSSL.crypto import FILETYPE_PEM, load_privatekey, sign
 from collections import defaultdict
 from lxml import etree
 from requests import Request
+import StringIO
 import base64
 import getpass
 import json
@@ -27,12 +28,12 @@ from .utils import splitIntoRns
 
 
 logger = logging.getLogger(__name__)
+payloadFormat = 'xml'
 
 
 def subLogger(name):
     return logging.getLogger('{}.{}'.format(__name__, name))
 
-payloadFormat = 'xml'
 
 # TODO (2015-05-07, Praveen Kumar): Research a way to automatically
 # load this by discovering the version from the node.
@@ -421,16 +422,18 @@ class Mo(Api):
     def ParseXmlResponse(self, xml, localOnly=False):
         # https://gist.github.com/karlcow/3258330
         xml = bytes(bytearray(xml, encoding='utf-8'))
-        root = etree.fromstring(xml)
-        assert root.tag == 'imdata'
+        context = etree.iterparse(StringIO.StringIO(xml),
+                                  events=('end',), tag='imdata')
         mos = []
-        for element in root.iterchildren('*'):
+        event, root = next(context)
+        for element in root.iterchildren():
             assert 'dn' in element.attrib
             if element.tag == 'moCount':
                 mo = self.moCount()
             else:
                 mo = self.FromDn(element.attrib['dn'])
             mo._fromXmlElement(element, localOnly=localOnly)
+            element.clear()
             mos.append(mo)
         return mos
 
@@ -482,15 +485,6 @@ class Mo(Api):
             child._fromObjectDict(cdict)
 
     def _fromXmlElement(self, element, localOnly=False):
-        # if element.tag == 'moCount':
-            # className = 'moCount'
-            # attributes = element.attrib
-            # print attributes
-            # child = self._spawnChildFromAttributes(className, **attributes)
-            # child._fromXmlElement(element, localOnly=localOnly)
-            # return
-            # self._className = 'moCount'
-
         assert element.tag == self._className
 
         if localOnly and element.attrib.get('lcOwn', 'local') != 'local':

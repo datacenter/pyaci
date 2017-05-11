@@ -14,6 +14,7 @@ class ApiOptions(dict):
     def __and__(self, other):
         return ApiOptions(self.items() + other.items())
 
+
 """Query immediate children."""
 children = ApiOptions([('query-target', 'children')])
 
@@ -25,6 +26,9 @@ faults = ApiOptions([('rsp-subtree-include', 'faults,no-scoped')])
 
 """Query audit logs."""
 auditLogs = ApiOptions([('rsp-subtree-include', 'audit-logs,no-scoped')])
+
+"""Get count."""
+count = ApiOptions([('rsp-subtree-include', 'count')])
 
 
 def subtreeClass(className):
