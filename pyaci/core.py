@@ -25,6 +25,7 @@ from .errors import (
     MetaError, MoError, ResourceError, RestError
 )
 from .utils import splitIntoRns
+import options
 
 
 logger = logging.getLogger(__name__)
@@ -706,16 +707,39 @@ class ResolveClassMethod(Api):
         self._className = className
         return self
 
-    def GET(self, format=None, **kwargs):
+    def GET(self, format=None, autoPage=False, pageSize=1000, **kwargs):
         if format is None:
             format = payloadFormat
 
         topRoot = self._rootApi().mit
-        response = super(ResolveClassMethod, self).GET(format, **kwargs)
-        if format == 'json':
-            result = topRoot.ParseJsonResponse(response.text)
-        elif format == 'xml':
-            result = topRoot.ParseXmlResponse(response.text)
+        if autoPage:
+            logger.debug('Auto paginating query with page size of %d',
+                         pageSize)
+            currentPage = 0
+            results = []
+            while True:
+                pageOptions = (options.pageSize(str(pageSize)) &
+                               options.page(str(currentPage)))
+                newKwargs = dict(pageOptions.items() + kwargs.items())
+                logger.debug('Querying page %d', currentPage)
+                response = super(ResolveClassMethod, self).GET(format,
+                                                               **newKwargs)
+                if format == 'json':
+                    result = topRoot.ParseJsonResponse(response.text)
+                elif format == 'xml':
+                    result = topRoot.ParseXmlResponse(response.text)
+                logger.debug('Got %s objects', len(result))
+                results.append(result)
+                if len(result) < pageSize:
+                    break
+                currentPage += 1
+            result = [mo for resultList in results for mo in resultList]
+        else:
+            response = super(ResolveClassMethod, self).GET(format, **kwargs)
+            if format == 'json':
+                result = topRoot.ParseJsonResponse(response.text)
+            elif format == 'xml':
+                result = topRoot.ParseXmlResponse(response.text)
 
         topRoot.ReadOnlyTree = True
         return result
