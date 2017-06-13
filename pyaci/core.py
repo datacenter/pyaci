@@ -707,11 +707,12 @@ class ResolveClassMethod(Api):
         self._className = className
         return self
 
-    def GET(self, format=None, autoPage=False, pageSize=1000, **kwargs):
+    def GET(self, format=None, mit=None, autoPage=False, pageSize=10000,
+            **kwargs):
         if format is None:
             format = payloadFormat
 
-        topRoot = self._rootApi().mit
+        topRoot = self._rootApi().mit if mit is None else mit
         if autoPage:
             logger.debug('Auto paginating query with page size of %d',
                          pageSize)
