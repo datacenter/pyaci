@@ -30,6 +30,9 @@ auditLogs = ApiOptions([('rsp-subtree-include', 'audit-logs,no-scoped')])
 """Get count."""
 count = ApiOptions([('rsp-subtree-include', 'count')])
 
+"""Subscribe to WebSocket notifications."""
+subscribe = ApiOptions([('subscription', 'yes')])
+
 
 def subtreeClass(className):
     """Query subtree class."""

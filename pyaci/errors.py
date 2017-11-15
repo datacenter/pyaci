@@ -31,3 +31,8 @@ class ResourceError(Error):
 class RestError(Error):
     """A REST error occurred."""
     pass
+
+
+class UserError(Error):
+    """A user caused error occurred."""
+    pass

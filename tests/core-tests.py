@@ -17,7 +17,7 @@ import pyaci
 
 logging.captureWarnings(True)
 
-url = 'https://praveek6-bld.insieme.local:7000'
+url = 'http://praveek6-bld.insieme.local:7000'
 
 
 class MoTests(unittest.TestCase):
@@ -233,12 +233,12 @@ class MoTests(unittest.TestCase):
 
 class LoginTests(unittest.TestCase):
     def setUp(self):
-        self.login = pyaci.Node('https://localhost').methods.Login(
+        self.login = pyaci.Node('http://localhost').methods.Login(
             'jsmith', 'secret'
         )
 
     def testCreation(self):
-        self.login._url().should.equal('https://localhost/api/aaaLogin.xml')
+        self.login._url().should.equal('http://localhost/api/aaaLogin.xml')
         self.login.Xml.should.equal(
             '<aaaUser pwd="secret" name="jsmith"/>\n'
         )
@@ -255,7 +255,7 @@ class LoginTests(unittest.TestCase):
     @httpretty.activate
     def testJsonPOST(self):
         httpretty.register_uri(httpretty.POST,
-                               'https://localhost/api/aaaLogin.json')
+                               'http://localhost/api/aaaLogin.json')
         self.login.POST(format='json')
         (httpretty.last_request().method).should.equal('POST')
         (httpretty.last_request().path).should.equal('/api/aaaLogin.json')
@@ -264,7 +264,7 @@ class LoginTests(unittest.TestCase):
     @httpretty.activate
     def testXmlPOST(self):
         httpretty.register_uri(httpretty.POST,
-                               'https://localhost/api/aaaLogin.xml')
+                               'http://localhost/api/aaaLogin.xml')
 
         self.login.POST(format='xml')
         (httpretty.last_request().method).should.equal('POST')
@@ -274,15 +274,15 @@ class LoginTests(unittest.TestCase):
 
 class LoginRefreshTests(unittest.TestCase):
     def setUp(self):
-        self.login = pyaci.Node('https://localhost').methods.LoginRefresh
+        self.login = pyaci.Node('http://localhost').methods.LoginRefresh
 
     def testCreation(self):
-        self.login._url().should.equal('https://localhost/api/aaaRefresh.xml')
+        self.login._url().should.equal('http://localhost/api/aaaRefresh.xml')
 
     @httpretty.activate
     def testAaaUserJsonGET(self):
         httpretty.register_uri(httpretty.GET,
-                               'https://localhost/api/aaaRefresh.json')
+                               'http://localhost/api/aaaRefresh.json')
         self.login.GET(format='json')
         (httpretty.last_request().method).should.equal('GET')
         (httpretty.last_request().path).should.equal('/api/aaaRefresh.json')
@@ -290,15 +290,15 @@ class LoginRefreshTests(unittest.TestCase):
 
 class ResolveClassTests(unittest.TestCase):
     def setUp(self):
-        self.resolve = pyaci.Node('https://localhost').methods.ResolveClass('fvTenant')
+        self.resolve = pyaci.Node('http://localhost').methods.ResolveClass('fvTenant')
 
     def testCreation(self):
-        self.resolve._url().should.equal('https://localhost/api/class/fvTenant.xml')
+        self.resolve._url().should.equal('http://localhost/api/class/fvTenant.xml')
 
     @httpretty.activate
     def testJsonGET(self):
         httpretty.register_uri(httpretty.GET,
-                               'https://localhost/api/class/fvTenant.json',
+                               'http://localhost/api/class/fvTenant.json',
                                body=textwrap.dedent('''\
         {
           "imdata":[
@@ -333,13 +333,13 @@ class ResolveClassTests(unittest.TestCase):
 
 class MethodsTests(unittest.TestCase):
     def setUp(self):
-        self.url = 'https://localhost'
+        self.url = 'http://localhost'
         self.tree = pyaci.Node(self.url).mit
 
     @httpretty.activate
     def testMoJsonGET(self):
         httpretty.register_uri(httpretty.GET,
-                               'https://localhost/api/mo/uni/tn-mgmt.json',
+                               'http://localhost/api/mo/uni/tn-mgmt.json',
                                body=textwrap.dedent('''\
         {
           "imdata":[
@@ -378,7 +378,7 @@ class MethodsTests(unittest.TestCase):
     @httpretty.activate
     def testMoXmlGET(self):
         httpretty.register_uri(httpretty.GET,
-                               'https://localhost/api/mo/uni/tn-mgmt.xml',
+                               'http://localhost/api/mo/uni/tn-mgmt.xml',
                                body=textwrap.dedent('''\
         <?xml version="1.0" encoding="UTF-8"?>
         <imdata totalCount="1">
@@ -401,7 +401,7 @@ class MethodsTests(unittest.TestCase):
     def testMoXmlGETWithOptions(self):
         httpretty.register_uri(
             httpretty.GET,
-            'https://localhost/api/mo/uni/tn-mgmt.xml?rsp-subtree=full&',
+            'http://localhost/api/mo/uni/tn-mgmt.xml?rsp-subtree=full&',
             body=textwrap.dedent('''\
         <?xml version="1.0" encoding="UTF-8"?>
         <imdata totalCount="1">
@@ -428,7 +428,7 @@ class MethodsTests(unittest.TestCase):
     @httpretty.activate
     def testMoJsonDELETE(self):
         httpretty.register_uri(httpretty.DELETE,
-                               'https://localhost/api/mo/uni/tn-test.json')
+                               'http://localhost/api/mo/uni/tn-test.json')
         self.tree.polUni().fvTenant('test').DELETE(format='json')
         (httpretty.last_request().method).should.equal('DELETE')
         (httpretty.last_request().path).should.equal(
@@ -438,7 +438,7 @@ class MethodsTests(unittest.TestCase):
     @httpretty.activate
     def testMoXmlDELETE(self):
         httpretty.register_uri(httpretty.DELETE,
-                               'https://localhost/api/mo/uni/tn-test.xml')
+                               'http://localhost/api/mo/uni/tn-test.xml')
         self.tree.polUni().fvTenant('test').DELETE(format='xml')
         (httpretty.last_request().method).should.equal('DELETE')
         (httpretty.last_request().path).should.equal('/api/mo/uni/tn-test.xml')
@@ -446,7 +446,7 @@ class MethodsTests(unittest.TestCase):
     @httpretty.activate
     def testMoJsonPOST(self):
         httpretty.register_uri(httpretty.POST,
-                               'https://localhost/api/mo/uni/tn-test.json')
+                               'http://localhost/api/mo/uni/tn-test.json')
         tenant = self.tree.polUni().fvTenant('test')
         tenant.POST(format='json')
         (httpretty.last_request().method).should.equal('POST')
@@ -458,7 +458,7 @@ class MethodsTests(unittest.TestCase):
     @httpretty.activate
     def testMoXmlPOST(self):
         httpretty.register_uri(httpretty.POST,
-                               'https://localhost/api/mo/uni/tn-test.xml')
+                               'http://localhost/api/mo/uni/tn-test.xml')
         tenant = self.tree.polUni().fvTenant('test')
         tenant.POST(format='xml')
         (httpretty.last_request().method).should.equal('POST')

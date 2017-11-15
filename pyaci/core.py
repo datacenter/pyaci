@@ -8,9 +8,10 @@ This module contains the core classes of PyACI.
 """
 
 from OpenSSL.crypto import FILETYPE_PEM, load_privatekey, sign
-from collections import defaultdict
+from collections import defaultdict, deque
 from lxml import etree
 from requests import Request
+from threading import Event
 import StringIO
 import base64
 import getpass
@@ -20,12 +21,15 @@ import operator
 import os
 import parse
 import requests
+import ssl
+import threading
+import websocket
 
 from .errors import (
-    MetaError, MoError, ResourceError, RestError
+    MetaError, MoError, ResourceError, RestError, UserError
 )
 from .utils import splitIntoRns
-import options
+from . import options
 
 
 logger = logging.getLogger(__name__)
@@ -66,7 +70,8 @@ class Api(object):
         return self._performRequest('DELETE', format=format)
 
     def POST(self, format=None, **kwargs):
-        return self._performRequest('POST', format=format, needData=True, **kwargs)
+        return self._performRequest(
+            'POST', format=format, needData=True, **kwargs)
 
     def _url(self, format=None, **kwargs):
         if format is None:
@@ -159,13 +164,16 @@ class Node(Api):
             requests.packages.urllib3.disable_warnings()
         self._apiUrlComponent = 'api'
         self._x509Key = None
+        self._wsMos = defaultdict(deque)
+        self._wsReady = Event()
+        self._wsEvents = {}
 
     @property
     def session(self):
         return self._session
 
     @property
-    def websocketUrl(self):
+    def webSocketUrl(self):
         token = self._rootApi()._session.cookies['APIC-cookie']
         return '{}/socket{}'.format(
             self._url.replace('https', 'wss').replace('http', 'ws'), token)
@@ -189,6 +197,66 @@ class Node(Api):
         else:
             self._apiUrlComponent = 'api'
 
+    def startWsListener(self):
+        logger.info('Establishing WebSocket connection to %s',
+                    self.webSocketUrl)
+        ws = websocket.WebSocketApp(
+            self.webSocketUrl,
+            on_open=self._handleWsOpen,
+            on_message=self._handleWsMessage,
+            on_error=self._handleWsError,
+            on_close=self._handleWsClose)
+        wst = threading.Thread(target=lambda: ws.run_forever(
+            sslopt={"cert_reqs": ssl.CERT_NONE}))
+        wst.daemon = True
+        wst.start()
+        logger.info('Waiting for the WebSocket connection to open')
+        self._wsReady.wait()
+
+    def _handleWsOpen(self, ws):
+        logger.info('Opened WebSocket connection')
+        self._wsReady.set()
+
+    def _handleWsMessage(self, ws, message):
+        logger.debug('Got a message on WebSocket: %s', message)
+        subscriptionIds = []
+        if message[:5] == '<?xml':
+            mos = self.mit.ParseXmlResponse(
+                message, subscriptionIds=subscriptionIds)
+        else:
+            mos = self.mit.ParseJsonResponse(
+                message, subscriptionIds=subscriptionIds)
+        for subscriptionId in subscriptionIds:
+            for mo in mos:
+                self._wsMos[subscriptionId].append(mo)
+            if subscriptionId not in self._wsEvents:
+                self._wsEvents[subscriptionId] = Event()
+            if mos:
+                self._wsEvents[subscriptionId].set()
+
+    def _handleWsError(self, ws, error):
+        logger.error('Encountered WebSocket error: %s', error)
+        self._wsReady.clear()
+
+    def _handleWsClose(self, ws):
+        logger.info('Closed WebSocket connection')
+        self._wsReady.clear()
+
+    def waitForWsMo(self, subscriptionId):
+        logger.info('Waiting for the WebSocket MOs')
+        if subscriptionId not in self._wsEvents:
+            self._wsEvents[subscriptionId] = Event()
+        self._wsEvents[subscriptionId].wait()
+
+    def hasWsMo(self, subscriptionId):
+        return len(self._wsMos[subscriptionId]) > 0
+
+    def popWsMo(self, subscriptionId):
+        mo = self._wsMos[subscriptionId].popleft()
+        if not self.hasWsMo(subscriptionId):
+            self._wsEvents[subscriptionId].clear()
+        return mo
+
     @property
     def mit(self):
         return Mo(self, 'topRoot')
@@ -196,13 +264,6 @@ class Node(Api):
     @property
     def methods(self):
         return MethodApi(self)
-
-    def handleWebsocketNotification(self, data):
-        if data[0] == '{':
-            format = 'json'
-        else:
-            format = 'xml'
-        print 'Handling Websocket notification:', format, data
 
     @property
     def _relativeUrl(self):
@@ -420,13 +481,16 @@ class Mo(Api):
         xml = bytes(bytearray(value, encoding='utf-8'))
         self._fromXmlElement(etree.fromstring(xml))
 
-    def ParseXmlResponse(self, xml, localOnly=False):
+    def ParseXmlResponse(self, xml, localOnly=False, subscriptionIds=[]):
         # https://gist.github.com/karlcow/3258330
         xml = bytes(bytearray(xml, encoding='utf-8'))
         context = etree.iterparse(StringIO.StringIO(xml),
                                   events=('end',), tag='imdata')
         mos = []
         event, root = next(context)
+        sIds = root.get('subscriptionId', '')
+        if sIds:
+            subscriptionIds.extend([str(x) for x in sIds.split(',')])
         for element in root.iterchildren():
             assert 'dn' in element.attrib
             if element.tag == 'moCount':
@@ -438,9 +502,12 @@ class Mo(Api):
             mos.append(mo)
         return mos
 
-    def ParseJsonResponse(self, text):
+    def ParseJsonResponse(self, text, subscriptionIds=[]):
         response = json.loads(text)
         assert 'imdata' in response
+        sIds = response.get('subscriptionId', [])
+        if sIds:
+            subscriptionIds.extend(sIds)
         mos = []
         for element in response['imdata']:
             name, value = element.iteritems().next()
@@ -456,14 +523,20 @@ class Mo(Api):
 
         topRoot = self.TopRoot
 
+        subscriptionIds = []
         response = super(Mo, self).GET(format, **kwargs)
         if format == 'json':
-            result = topRoot.ParseJsonResponse(response.text)
+            result = topRoot.ParseJsonResponse(response.text,
+                                               subscriptionIds=subscriptionIds)
         elif format == 'xml':
-            result = topRoot.ParseXmlResponse(response.text)
+            result = topRoot.ParseXmlResponse(response.text,
+                                              subscriptionIds=subscriptionIds)
 
         topRoot.ReadOnlyTree = True
-        return result
+        if subscriptionIds:
+            return result, subscriptionIds[0]
+        else:
+            return result
 
     @property
     def _relativeUrl(self):
@@ -712,8 +785,13 @@ class ResolveClassMethod(Api):
         if format is None:
             format = payloadFormat
 
+        subscriptionIds = []
         topRoot = self._rootApi().mit if mit is None else mit
         if autoPage:
+            # TODO: Subscription is not supported with autoPage option.
+            if 'subscription' in kwargs:
+                raise UserError(
+                    'Subscription is not suppored with autoPage option')
             logger.debug('Auto paginating query with page size of %d',
                          pageSize)
             currentPage = 0
@@ -738,12 +816,18 @@ class ResolveClassMethod(Api):
         else:
             response = super(ResolveClassMethod, self).GET(format, **kwargs)
             if format == 'json':
-                result = topRoot.ParseJsonResponse(response.text)
+                result = topRoot.ParseJsonResponse(
+                    response.text, subscriptionIds=subscriptionIds)
             elif format == 'xml':
-                result = topRoot.ParseXmlResponse(response.text)
+                result = topRoot.ParseXmlResponse(
+                    response.text, subscriptionIds=subscriptionIds)
 
         topRoot.ReadOnlyTree = True
-        return result
+
+        if subscriptionIds:
+            return result, subscriptionIds[0]
+        else:
+            return result
 
 
 class MethodApi(Api):
