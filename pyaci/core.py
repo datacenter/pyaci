@@ -178,8 +178,8 @@ class Node(Api):
         return '{}/socket{}'.format(
             self._url.replace('https', 'wss').replace('http', 'ws'), token)
 
-    def useX509CertAuth(self, userName, certName, certFile):
-        with open(certFile, 'r') as f:
+    def useX509CertAuth(self, userName, certName, keyFile):
+        with open(keyFile, 'r') as f:
             key = f.read()
         self._x509Dn = (self.mit.polUni().aaaUserEp().
                         aaaUser(userName).aaaUserCert(certName).Dn)
