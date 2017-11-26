@@ -24,6 +24,7 @@ import requests
 import ssl
 import threading
 import websocket
+from urllib import unquote
 
 from .errors import (
     MetaError, MoError, ResourceError, RestError, UserError
@@ -136,6 +137,7 @@ class Api(object):
         if rootApi._x509Key is None:
             return
         payload = '{}{}'.format(req.method, req.url.replace(rootApi._url, ''))
+        payload = unquote(payload)
         if data is not None:
             payload += data
         signature = base64.b64encode(sign(rootApi._x509Key, payload,
