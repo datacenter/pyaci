@@ -7,6 +7,7 @@ import getpass
 import inspect
 import os
 import paramiko
+import errno
 
 
 def parse_args():
@@ -60,12 +61,21 @@ def main():
     ''.join(stdout.readlines()).strip()
     # TODO (2015-09-14, Praveen Kumar): Check the exit status properly.
 
+    # Create ~/.aci-meta if it does not exist.
+    aci_meta_dir = '~/.aci-meta'
+    destination_dir = os.path.expanduser('{}'.format(aci_meta_dir))
+    try:
+        os.makedirs(destination_dir)
+    except OSError as e:
+        if e.errno != errno.EEXIST:
+            raise
+
     destination = os.path.expanduser(
-        '~/.aci-meta/aci-meta.{}.json'.format(version))
+        '{}/aci-meta.{}.json'.format(aci_meta_dir, version))
     print('Copying generated meta from APIC to', destination)
     scp.get('aci-meta.json', destination)
 
-    default = os.path.expanduser('~/.aci-meta/aci-meta.json')
+    default = os.path.expanduser('{}/aci-meta.json'.format(aci_meta_dir))
     if not os.path.isfile(default):
         print('No default meta exist. '
               'Setting the current meta as the default.')
