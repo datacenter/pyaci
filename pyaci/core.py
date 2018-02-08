@@ -124,7 +124,7 @@ class Api(object):
         req = Request(method, url, data=data)
         prepped = rootApi._session.prepare_request(req)
         self._x509Prep(rootApi, prepped, data)
-        response = rootApi._session.send(prepped, verify=rootApi._verify)
+        response = rootApi._session.send(prepped, verify=rootApi._verify, timeout=rootApi._timeout)
 
         logger.debug('<- %d', response.status_code)
         logger.debug('%s', response.text)
@@ -154,13 +154,14 @@ class Api(object):
 
 
 class Node(Api):
-    def __init__(self, url, session=None, verify=False, disableWarnings=True):
+    def __init__(self, url, session=None, verify=False, disableWarnings=True, timeout=None):
         super(Node, self).__init__()
         self._url = url
         if session is not None:
             self._session = session
         else:
             self._session = requests.session()
+        self._timeout = timeout
         self._verify = verify
         if disableWarnings:
             requests.packages.urllib3.disable_warnings()
