@@ -180,11 +180,15 @@ class Node(Api):
         return '{}/socket{}'.format(
             self._url.replace('https', 'wss').replace('http', 'ws'), token)
 
-    def useX509CertAuth(self, userName, certName, keyFile):
+    def useX509CertAuth(self, userName, certName, keyFile, appcenter=False):
         with open(keyFile, 'r') as f:
             key = f.read()
-        self._x509Dn = (self.mit.polUni().aaaUserEp().
-                        aaaUser(userName).aaaUserCert(certName).Dn)
+        if appcenter:
+            self._x509Dn = (self.mit.polUni().aaaUserEp().
+                            aaaAppUser(userName).aaaUserCert(certName).Dn)
+        else:
+            self._x509Dn = (self.mit.polUni().aaaUserEp().
+                            aaaUser(userName).aaaUserCert(certName).Dn)
         self._x509Key = load_privatekey(FILETYPE_PEM, key)
 
     def toggleTestApi(self, shouldEnable, dme='policymgr'):
