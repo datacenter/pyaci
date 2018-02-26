@@ -38,11 +38,11 @@ class Not(UnaryFilter):
     _operator = 'not'
 
 
-class True(UnaryFilter):
+class CheckTrue(UnaryFilter):
     _operator = 'true'
 
 
-class False(UnaryFilter):
+class CheckFalse(UnaryFilter):
     _operator = 'false'
 
 

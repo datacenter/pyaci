@@ -12,7 +12,7 @@ from collections import defaultdict, deque
 from lxml import etree
 from requests import Request
 from threading import Event
-import StringIO
+from io import StringIO
 import base64
 import getpass
 import json
@@ -24,7 +24,7 @@ import requests
 import ssl
 import threading
 import websocket
-from urllib import unquote
+from urllib.parse import unquote
 
 from .errors import (
     MetaError, MoError, ResourceError, RestError, UserError
@@ -94,7 +94,7 @@ class Api(object):
 
         if kwargs:
             options = '?'
-            for key, value in kwargs.iteritems():
+            for key, value in kwargs.items():
                 options += (key + '=' + value + '&')
         else:
             options = ''
@@ -288,7 +288,7 @@ class MoIter(Api):
         self._objects = objects
         self._aciClassMeta = aciClassMetas[self._className]
         self._rnFormat = self._aciClassMeta['rnFormat']
-        self._iter = self._objects.itervalues()
+        self._iter = self._objects.values()
 
     def __call__(self, *args, **kwargs):
         identifiedBy = self._aciClassMeta['identifiedBy']
@@ -406,7 +406,7 @@ class Mo(Api):
 
     @property
     def Children(self):
-        return self._children.itervalues()
+        return self._children.values()
 
     @property
     def Status(self):
@@ -517,7 +517,7 @@ class Mo(Api):
             subscriptionIds.extend(sIds)
         mos = []
         for element in response['imdata']:
-            name, value = element.iteritems().next()
+            name, value = element.items().next()
             assert 'dn' in value['attributes']
             mo = self.FromDn(value['attributes']['dn'])
             mo._fromObjectDict(element)
@@ -555,13 +555,13 @@ class Mo(Api):
     def _fromObjectDict(self, objectDict):
         attributes = objectDict[self._className].get('attributes', {})
 
-        for key, value in attributes.iteritems():
+        for key, value in attributes.items():
             self._properties[key] = value
 
         children = objectDict[self._className].get('children', [])
         for cdict in children:
-            className = cdict.iterkeys().next()
-            attributes = cdict.itervalues().next().get('attributes', {})
+            className = cdict.keys().next()
+            attributes = cdict.values().next().get('attributes', {})
             child = self._spawnChildFromAttributes(className, **attributes)
             child._fromObjectDict(cdict)
 

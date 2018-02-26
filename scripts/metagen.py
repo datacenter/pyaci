@@ -78,7 +78,7 @@ def main():
     aciClassMetas = pool.imap(generateClassMeta, classNames)
     aciMeta['classes'] = dict(aciClassMetas)
 
-    with open('aci-meta.json', 'wb') as out:
+    with open('aci-meta.json', 'w') as out:
         json.dump(aciMeta, out,
                   sort_keys=True, indent=2, separators=(',', ': '))
 
