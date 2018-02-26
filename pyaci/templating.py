@@ -18,7 +18,7 @@ def mergeDict(master, other):
     """Merge the given two dictionaries recursively and return the
     result."""
     if isinstance(master, dict) and isinstance(other, dict):
-        for key, value in other.iteritems():
+        for key, value in other.items():
             if isinstance(value, dict):
                 if key not in master:
                     master[key] = value

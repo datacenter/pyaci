@@ -25,19 +25,19 @@ def main():
         limitedClassMetas[className] = copy.deepcopy(aciClassMetas[className])
 
         limitedClassMetas[className]['contains'] = {}
-        for key, value in aciClassMetas[className]['contains'].iteritems():
+        for key, value in aciClassMetas[className]['contains'].items():
             if key in limitedClasses:
                 limitedClassMetas[className]['contains'][key] = value
 
         limitedClassMetas[className]['rnMap'] = {}
-        for key, value in aciClassMetas[className]['rnMap'].iteritems():
+        for key, value in aciClassMetas[className]['rnMap'].items():
             if value in limitedClasses:
                 limitedClassMetas[className]['rnMap'][key] = value
 
     limitedMeta = {}
     limitedMeta['classes'] = limitedClassMetas
 
-    with open('aci-meta.json', 'wb') as out:
+    with open('aci-meta.json', 'w') as out:
         json.dump(limitedMeta, out,
                   sort_keys=True, indent=2, separators=(',', ': '))
 
