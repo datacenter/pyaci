@@ -12,7 +12,8 @@ from collections import defaultdict, deque
 from lxml import etree
 from requests import Request
 from threading import Event
-from io import StringIO
+from io import BytesIO
+from functools import reduce
 import base64
 import getpass
 import json
@@ -291,7 +292,10 @@ class MoIter(Api):
         self._objects = objects
         self._aciClassMeta = aciClassMetas[self._className]
         self._rnFormat = self._aciClassMeta['rnFormat']
-        self._iter = self._objects.values()
+        try:
+            self._iter = self._objects.itervalues()
+        except AttributeError:
+            self._iter = self._objects.values()
 
     def __call__(self, *args, **kwargs):
         identifiedBy = self._aciClassMeta['identifiedBy']
@@ -409,7 +413,10 @@ class Mo(Api):
 
     @property
     def Children(self):
-        return self._children.values()
+        try:
+            return self._children.itervalues()
+        except AttributeError:
+            return self._children.values()
 
     @property
     def Status(self):
@@ -494,7 +501,7 @@ class Mo(Api):
     def ParseXmlResponse(self, xml, localOnly=False, subscriptionIds=[]):
         # https://gist.github.com/karlcow/3258330
         xml = bytes(bytearray(xml, encoding='utf-8'))
-        context = etree.iterparse(StringIO(xml),
+        context = etree.iterparse(BytesIO(xml),
                                   events=('end',), tag='imdata')
         mos = []
         event, root = next(context)
@@ -520,7 +527,10 @@ class Mo(Api):
             subscriptionIds.extend(sIds)
         mos = []
         for element in response['imdata']:
-            name, value = element.items()
+            try:
+                name, value = element.iteritems().next()
+            except AttributeError:
+                name, value = element.items()
             assert 'dn' in value['attributes']
             mo = self.FromDn(value['attributes']['dn'])
             mo._fromObjectDict(element)
@@ -563,8 +573,12 @@ class Mo(Api):
 
         children = objectDict[self._className].get('children', [])
         for cdict in children:
-            className = cdict.keys()
-            attributes = cdict.values().get('attributes', {})
+            try:
+                className = cdict.iterkeys().next()
+                attributes = cdict.itervalues().next().get('attributes', {})
+            except AttributeError:
+                className = cdict.keys().next()
+                attributes = cdict.values().next().get('attributes', {})
             child = self._spawnChildFromAttributes(className, **attributes)
             child._fromObjectDict(cdict)
 
