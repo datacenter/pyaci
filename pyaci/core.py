@@ -24,7 +24,10 @@ import requests
 import ssl
 import threading
 import websocket
-from urllib.parse import unquote
+try:
+    from urllib.parse import unquote
+except ImportError:
+    from urllib import unquote
 
 from .errors import (
     MetaError, MoError, ResourceError, RestError, UserError
