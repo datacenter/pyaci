@@ -494,7 +494,7 @@ class Mo(Api):
     def ParseXmlResponse(self, xml, localOnly=False, subscriptionIds=[]):
         # https://gist.github.com/karlcow/3258330
         xml = bytes(bytearray(xml, encoding='utf-8'))
-        context = etree.iterparse(StringIO.StringIO(xml),
+        context = etree.iterparse(StringIO(xml),
                                   events=('end',), tag='imdata')
         mos = []
         event, root = next(context)
@@ -520,7 +520,7 @@ class Mo(Api):
             subscriptionIds.extend(sIds)
         mos = []
         for element in response['imdata']:
-            name, value = element.items().next()
+            name, value = element.items()
             assert 'dn' in value['attributes']
             mo = self.FromDn(value['attributes']['dn'])
             mo._fromObjectDict(element)
@@ -563,8 +563,8 @@ class Mo(Api):
 
         children = objectDict[self._className].get('children', [])
         for cdict in children:
-            className = cdict.keys().next()
-            attributes = cdict.values().next().get('attributes', {})
+            className = cdict.keys()
+            attributes = cdict.values().get('attributes', {})
             child = self._spawnChildFromAttributes(className, **attributes)
             child._fromObjectDict(cdict)
 
