@@ -41,8 +41,9 @@ def main():
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(args.host[0], port=args.port,
-                username=args.user, password=args.password)
+    ssh.connect(args.host[0], port=args.port, username=args.user,
+                password=args.password, allow_agent=False,
+                look_for_keys=False)
     stdin, stdout, stderr = ssh.exec_command('acidiag version')
     version = ''.join(stdout.readlines()).strip()
     vlist = version.split('.')
