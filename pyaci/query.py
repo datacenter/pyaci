@@ -83,7 +83,7 @@ class Index(object):
                                                      value)
                     return filter(pred, self._objectsByClass[className])
             except Exception as e:
-                print e
+                print(e)
 
         return self._objectsByClass[className]
 

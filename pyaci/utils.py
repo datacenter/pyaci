@@ -10,6 +10,7 @@ This module contains PyACI utility functions.
 from contextlib import contextmanager
 import logging
 import tarfile
+from functools import reduce
 
 logger = logging.getLogger(__name__)
 
