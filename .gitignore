@@ -14,3 +14,6 @@ dist
 *.pyc
 .pyenv-version
 examples/.ipynb_checkpoints/
+.vscode
+.noseids
+.DS_Store
