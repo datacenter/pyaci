@@ -14,6 +14,7 @@ from requests import Request
 from threading import Event
 from io import BytesIO
 from functools import reduce
+from six import iteritems, iterkeys, itervalues
 import base64
 import getpass
 import json
@@ -98,7 +99,7 @@ class Api(object):
 
         if kwargs:
             options = '?'
-            for key, value in kwargs.items():
+            for key, value in iteritems(kwargs):
                 options += (key + '=' + value + '&')
         else:
             options = ''
@@ -292,10 +293,7 @@ class MoIter(Api):
         self._objects = objects
         self._aciClassMeta = aciClassMetas[self._className]
         self._rnFormat = self._aciClassMeta['rnFormat']
-        try:
-            self._iter = self._objects.itervalues()
-        except AttributeError:
-            self._iter = self._objects.values()
+        self._iter = itervalues(self._objects)
 
     def __call__(self, *args, **kwargs):
         identifiedBy = self._aciClassMeta['identifiedBy']
@@ -413,10 +411,7 @@ class Mo(Api):
 
     @property
     def Children(self):
-        try:
-            return self._children.itervalues()
-        except AttributeError:
-            return self._children.values()
+        return itervalues(self._children)
 
     @property
     def Status(self):
@@ -527,10 +522,7 @@ class Mo(Api):
             subscriptionIds.extend(sIds)
         mos = []
         for element in response['imdata']:
-            try:
-                name, value = element.iteritems().next()
-            except AttributeError:
-                name, value = element.items()
+            name, value = next(iteritems(element))
             assert 'dn' in value['attributes']
             mo = self.FromDn(value['attributes']['dn'])
             mo._fromObjectDict(element)
@@ -573,12 +565,8 @@ class Mo(Api):
 
         children = objectDict[self._className].get('children', [])
         for cdict in children:
-            try:
-                className = cdict.iterkeys().next()
-                attributes = cdict.itervalues().next().get('attributes', {})
-            except AttributeError:
-                className = cdict.keys().next()
-                attributes = cdict.values().next().get('attributes', {})
+            className = next(iterkeys(cdict))
+            attributes = next(itervalues(cdict)).get('attributes', {})
             child = self._spawnChildFromAttributes(className, **attributes)
             child._fromObjectDict(cdict)
 
