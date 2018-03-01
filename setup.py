@@ -56,6 +56,7 @@ setup(
         'pyyaml',
         'requests',
         'scp',
+        'six',
         'websocket-client',
     ],
 
