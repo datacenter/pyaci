@@ -41,5 +41,5 @@ jobs:
             nosetests --with-coverage --cover-html --cover-package=pyaci
 
       - store_artifacts:
-          path: test-reports
-          destination: test-reports
+          path: cover
+          destination: cover
