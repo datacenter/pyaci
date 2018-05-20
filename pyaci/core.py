@@ -129,7 +129,7 @@ class Api(object):
         req = Request(method, url, data=data)
         prepped = rootApi._session.prepare_request(req)
         # never use certificate for subscription requests
-        if "subscription" not in kwargs.keys():
+        if "subscription" not in kwargs:
             self._x509Prep(rootApi, prepped, data)
         response = rootApi._session.send(prepped, verify=rootApi._verify, timeout=rootApi._timeout)
 
