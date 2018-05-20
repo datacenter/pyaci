@@ -4,7 +4,7 @@
 #
 version: 2
 jobs:
-  build:
+  python2.7:
     docker:
       - image: circleci/python:2.7.15
       
@@ -43,3 +43,51 @@ jobs:
       - store_artifacts:
           path: cover
           destination: cover
+
+  python3.6:
+    docker:
+      - image: circleci/python:3.6.5
+      
+    working_directory: ~/pyaci
+
+    steps:
+      - checkout
+
+      # Download and cache dependencies
+      - restore_cache:
+          keys:
+          - v1-dependencies-{{ checksum "setup.py" }}
+          # fallback to using the latest cache if no exact match is found
+          - v1-dependencies-
+
+      - run:
+          name: install dependencies
+          command: |
+            python3 -m venv venv
+            . venv/bin/activate
+            pip install -e .[doc,test]
+
+      - save_cache:
+          paths:
+            - ./venv
+          key: v1-dependencies-{{ checksum "setup.py" }}
+        
+      - run:
+          name: run tests
+          command: |
+            . venv/bin/activate
+            mkdir ~/.aci-meta
+            cp meta/aci-meta.limited.json ~/.aci-meta/aci-meta.json
+            nosetests --with-coverage --cover-html --cover-package=pyaci
+
+      - store_artifacts:
+          path: cover
+          destination: cover
+
+workflows:
+  version: 2
+
+  build:
+    jobs:
+      - python2.7
+      - python3.6
