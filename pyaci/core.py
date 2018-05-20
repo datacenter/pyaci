@@ -128,7 +128,9 @@ class Api(object):
 
         req = Request(method, url, data=data)
         prepped = rootApi._session.prepare_request(req)
-        self._x509Prep(rootApi, prepped, data)
+        # never use certificate for subscription requests
+        if "subscription" not in kwargs.keys():
+            self._x509Prep(rootApi, prepped, data)
         response = rootApi._session.send(prepped, verify=rootApi._verify, timeout=rootApi._timeout)
 
         logger.debug('<- %d', response.status_code)
@@ -696,6 +698,35 @@ class LoginMethod(Api):
         self._properties['pwd'] = password
         return self
 
+class AppLoginMethod(Api):
+    def __init__(self, parentApi):
+        super(AppLoginMethod, self).__init__(parentApi=parentApi)
+        self._moClassName = "aaaAppToken"
+        self._properties = {}
+
+    @property
+    def Json(self):
+        result = {}
+        result[self._moClassName] = {'attributes': self._properties.copy()}
+        return json.dumps(result,
+                          sort_keys=True, indent=2, separators=(',', ': '))
+
+    @property
+    def Xml(self):
+        result = etree.Element(self._moClassName)
+
+        for key, value in self._properties.items():
+            result.set(key, value)
+
+        return etree.tostring(result, pretty_print=True)
+
+    @property
+    def _relativeUrl(self):
+        return 'requestAppToken'
+
+    def __call__(self, appName):
+        self._properties['appName'] = appName
+        return self
 
 class LoginRefreshMethod(Api):
     def __init__(self, parentApi):
@@ -853,6 +884,10 @@ class MethodApi(Api):
     @property
     def Login(self):
         return LoginMethod(parentApi=self)
+
+    @property
+    def AppLogin(self):
+        return AppLoginMethod(parentApi=self)
 
     @property
     def LoginRefresh(self):
