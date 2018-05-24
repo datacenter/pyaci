@@ -12,7 +12,7 @@ class ApiOptions(dict):
     """Dict like data structure capturing REST API options."""
 
     def __and__(self, other):
-        return ApiOptions(self.items() + other.items())
+        return ApiOptions(self, **other)
 
 
 """Query immediate children."""
