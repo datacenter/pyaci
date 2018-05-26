@@ -13,7 +13,7 @@ PyACI was designed with the following goals in mind.
 Status
 ------
 
-PyACI is not the official Python bindings for CISCO ACI. It is
+PyACI is not the official Python bindings for Cisco ACI. It is
 provided as an alternative. For an official Python API, please look at
 Cobra.
 
