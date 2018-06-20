@@ -52,17 +52,17 @@ def subLogger(name):
 aciMetaDir = os.path.expanduser(os.environ.get('ACI_META_DIR', '~/.aci-meta'))
 
 if not os.path.exists(aciMetaDir):
-    raise MetaError('Unable to find ACI meta directory {}'.format(aciMetaDir))
+    aciClassMetas = dict()
+    # raise MetaError('Unable to find ACI meta directory {}'.format(aciMetaDir))
+else:
+    aciMetaFile = os.path.join(aciMetaDir, 'aci-meta.json')
+    if not os.path.exists(aciMetaFile):
+        raise MetaError('Unable to find ACI meta file {}'.format(aciMetaFile))
 
-aciMetaFile = os.path.join(aciMetaDir, 'aci-meta.json')
-
-if not os.path.exists(aciMetaFile):
-    raise MetaError('Unable to find ACI meta file {}'.format(aciMetaFile))
-
-with open(aciMetaFile, 'rb') as f:
-    logger.debug('Loading meta information from %s', aciMetaFile)
-    aciMeta = json.load(f)
-    aciClassMetas = aciMeta['classes']
+    with open(aciMetaFile, 'rb') as f:
+        logger.debug('Loading meta information from %s', aciMetaFile)
+        aciMeta = json.load(f)
+        aciClassMetas = aciMeta['classes']
 
 
 class Api(object):
@@ -161,13 +161,21 @@ class Api(object):
 
 
 class Node(Api):
-    def __init__(self, url, session=None, verify=False, disableWarnings=True, timeout=None):
+    def __init__(self, url, session=None, verify=False, disableWarnings=True, timeout=None, aciMetaFilePath=None):
         super(Node, self).__init__()
         self._url = url
         if session is not None:
             self._session = session
         else:
             self._session = requests.session()
+
+        if aciMetaFilePath:
+            with open(aciMetaFilePath, 'rb') as f:
+                logger.debug('Loading meta information from %s', aciMetaFilePath)
+                aciMetaContents = json.load(f)
+                self._aciClassMetas = aciMetaContents['classes']
+        else:
+            self._aciClassMetas = aciClassMetas
         self._timeout = timeout
         self._verify = verify
         if disableWarnings:
@@ -273,7 +281,7 @@ class Node(Api):
 
     @property
     def mit(self):
-        return Mo(self, 'topRoot')
+        return Mo(self, 'topRoot', self._aciClassMetas)
 
     @property
     def methods(self):
@@ -288,11 +296,12 @@ class Node(Api):
 
 
 class MoIter(Api):
-    def __init__(self, parentApi, className, objects):
+    def __init__(self, parentApi, className, objects, aciClassMetas):
         self._parentApi = parentApi
         self._className = className
         assert isinstance(objects, dict)
         self._objects = objects
+        self._aciClassMetas = aciClassMetas
         self._aciClassMeta = aciClassMetas[self._className]
         self._rnFormat = self._aciClassMeta['rnFormat']
         self._iter = itervalues(self._objects)
@@ -316,7 +325,7 @@ class MoIter(Api):
                     'Mo with DN {} does not contain a child with RN {}'
                     .format(self._parentApi.Dn, rn))
 
-            mo = Mo(self._parentApi, self._className)
+            mo = Mo(self._parentApi, self._className, self._aciClassMetas)
             for name in identifiedBy:
                 setattr(mo, name, identifierDict[name])
             self._parentApi._addChild(self._className, rn, mo)
@@ -338,10 +347,11 @@ class MoIter(Api):
 
 
 class Mo(Api):
-    def __init__(self, parentApi, className):
+    def __init__(self, parentApi, className, aciClassMetas):
         super(Mo, self).__init__(parentApi=parentApi)
 
         self._className = className
+        self._aciClassMetas = aciClassMetas
         self._aciClassMeta = aciClassMetas[self._className]
         self._properties = {
             x[0]: None
@@ -613,7 +623,7 @@ class Mo(Api):
             return self._properties[name]
 
         if name in self._aciClassMeta['contains']:
-            return MoIter(self, name, self._childrenByClass[name])
+            return MoIter(self, name, self._childrenByClass[name], aciClassMetas=self._aciClassMetas)
 
         raise AttributeError('{} is not a valid attribute for class {}'.
                              format(name, self.ClassName))
