@@ -53,7 +53,6 @@ aciMetaDir = os.path.expanduser(os.environ.get('ACI_META_DIR', '~/.aci-meta'))
 
 if not os.path.exists(aciMetaDir):
     aciClassMetas = dict()
-    # raise MetaError('Unable to find ACI meta directory {}'.format(aciMetaDir))
 else:
     aciMetaFile = os.path.join(aciMetaDir, 'aci-meta.json')
     if not os.path.exists(aciMetaFile):
@@ -169,13 +168,17 @@ class Node(Api):
         else:
             self._session = requests.session()
 
-        if aciMetaFilePath:
+        if aciMetaFilePath is not None:
             with open(aciMetaFilePath, 'rb') as f:
                 logger.debug('Loading meta information from %s', aciMetaFilePath)
                 aciMetaContents = json.load(f)
                 self._aciClassMetas = aciMetaContents['classes']
         else:
-            self._aciClassMetas = aciClassMetas
+            if not aciClassMetas:
+                raise MetaError('ACI meta was not specified !')
+            else:
+                self._aciClassMetas = aciClassMetas
+
         self._timeout = timeout
         self._verify = verify
         if disableWarnings:
@@ -667,7 +670,7 @@ class Mo(Api):
         return moIter(*identifierArgs)
 
     def _spawnChildFromAttributes(self, className, **attributes):
-        rnFormat = aciClassMetas[className]['rnFormat']
+        rnFormat = self._aciClassMetas[className]['rnFormat']
         rn = rnFormat.format(**attributes)
         return self._spawnChildFromRn(className, rn)
 
