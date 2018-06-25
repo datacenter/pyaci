@@ -8,7 +8,7 @@ This module contains the core classes of PyACI.
 """
 
 from OpenSSL.crypto import FILETYPE_PEM, load_privatekey, sign
-from collections import defaultdict, deque
+from collections import OrderedDict, defaultdict, deque
 from lxml import etree
 from requests import Request
 from threading import Event
@@ -44,6 +44,10 @@ payloadFormat = 'xml'
 
 def subLogger(name):
     return logging.getLogger('{}.{}'.format(__name__, name))
+
+
+def _elementToString(e):
+    return etree.tostring(e, pretty_print=True, encoding='unicode')
 
 
 # TODO (2015-05-07, Praveen Kumar): Research a way to automatically
@@ -365,8 +369,8 @@ class Mo(Api):
         }
         self._rnFormat = self._aciClassMeta['rnFormat']
 
-        self._children = {}
-        self._childrenByClass = defaultdict(dict)
+        self._children = OrderedDict()
+        self._childrenByClass = defaultdict(OrderedDict)
         self._readOnlyTree = False
 
     def FromDn(self, dn):
@@ -479,7 +483,7 @@ class Mo(Api):
 
             return result
 
-        return etree.tostring(element(self), pretty_print=True)
+        return _elementToString(element(self))
 
     def GetXml(self, elementPredicate=lambda mo: True,
                propertyPredicate=lambda mo, name: True):
@@ -502,9 +506,8 @@ class Mo(Api):
 
             return result
 
-        return etree.tostring(element(self, elementPredicate,
-                                      propertyPredicate),
-                              pretty_print=True)
+        return _elementToString(
+            element(self, elementPredicate, propertyPredicate))
 
     @Xml.setter
     def Xml(self, value):
@@ -699,7 +702,7 @@ class LoginMethod(Api):
         for key, value in self._properties.items():
             result.set(key, value)
 
-        return etree.tostring(result, pretty_print=True)
+        return _elementToString(result)
 
     @property
     def _relativeUrl(self):
@@ -736,7 +739,7 @@ class AppLoginMethod(Api):
         for key, value in self._properties.items():
             result.set(key, value)
 
-        return etree.tostring(result, pretty_print=True)
+        return _elementToString(result)
 
     @property
     def _relativeUrl(self):
@@ -785,7 +788,7 @@ class ChangeCertMethod(Api):
         for key, value in self._properties.items():
             result.set(key, value)
 
-        return etree.tostring(result, pretty_print=True)
+        return _elementToString(result)
 
     @property
     def _relativeUrl(self):
