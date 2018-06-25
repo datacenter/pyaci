@@ -130,7 +130,8 @@ class Api(object):
         # never use certificate for subscription requests
         if "subscription" not in kwargs:
             self._x509Prep(rootApi, prepped, data)
-        response = rootApi._session.send(prepped, verify=rootApi._verify, timeout=rootApi._timeout)
+        response = rootApi._session.send(
+            prepped, verify=rootApi._verify, timeout=rootApi._timeout)
 
         logger.debug('<- %d', response.status_code)
         logger.debug('%s', response.text)
@@ -160,7 +161,8 @@ class Api(object):
 
 
 class Node(Api):
-    def __init__(self, url, session=None, verify=False, disableWarnings=True, timeout=None, aciMetaFilePath=None):
+    def __init__(self, url, session=None, verify=False, disableWarnings=True,
+                 timeout=None, aciMetaFilePath=None):
         super(Node, self).__init__()
         self._url = url
         if session is not None:
@@ -170,7 +172,8 @@ class Node(Api):
 
         if aciMetaFilePath is not None:
             with open(aciMetaFilePath, 'rb') as f:
-                logger.debug('Loading meta information from %s', aciMetaFilePath)
+                logger.debug('Loading meta information from %s',
+                             aciMetaFilePath)
                 aciMetaContents = json.load(f)
                 self._aciClassMetas = aciMetaContents['classes']
         else:
@@ -626,7 +629,8 @@ class Mo(Api):
             return self._properties[name]
 
         if name in self._aciClassMeta['contains']:
-            return MoIter(self, name, self._childrenByClass[name], aciClassMetas=self._aciClassMetas)
+            return MoIter(self, name, self._childrenByClass[name],
+                          aciClassMetas=self._aciClassMetas)
 
         raise AttributeError('{} is not a valid attribute for class {}'.
                              format(name, self.ClassName))
@@ -711,6 +715,7 @@ class LoginMethod(Api):
         self._properties['pwd'] = password
         return self
 
+
 class AppLoginMethod(Api):
     def __init__(self, parentApi):
         super(AppLoginMethod, self).__init__(parentApi=parentApi)
@@ -740,6 +745,7 @@ class AppLoginMethod(Api):
     def __call__(self, appName):
         self._properties['appName'] = appName
         return self
+
 
 class LoginRefreshMethod(Api):
     def __init__(self, parentApi):

@@ -13,7 +13,7 @@ PyACI: Python Bindings for Cisco ACI REST API
    :alt: codecov status
    :target: https://codecov.io/gh/datacenter/pyaci
 
-.. image:: https://media.readthedocs.org/static/projects/badges/passing.svg
+.. image:: https://readthedocs.org/projects/pyaci/badge/?version=latest&style=plastic
    :alt: Doc Status
    :target: http://pyaci.readthedocs.io/en/latest/
 
