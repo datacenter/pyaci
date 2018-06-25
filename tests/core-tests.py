@@ -1,5 +1,6 @@
 import httpretty
 
+from lxml import etree
 import logging
 import os
 import sure                     # flake8: noqa
@@ -206,9 +207,10 @@ class MoTests(unittest.TestCase):
         tenant.descr.should.be(None)
         tenant.descr = 'Sample description'
         tenant.descr.should.equal('Sample description')
-        tenant.Xml.should.equal(
-            '<fvTenant name="mgmt" descr="Sample description"/>\n'
-        )
+        et = etree.XML(tenant.Xml)
+        et.tag.should.equal('fvTenant')
+        et.attrib['name'].should.equal('mgmt')
+        et.attrib['descr'].should.equal('Sample description')
 
     def testMoChaining(self):
         uni = self.tree.polUni()
@@ -220,10 +222,10 @@ class MoTests(unittest.TestCase):
         <polUni>
           <fvTenant name="test">
             <fvCtx name="infra"/>
-            <fvBD name="hr">
+            <fvBD name="lab">
               <fvRsCtx tnFvCtxName="infra"/>
             </fvBD>
-            <fvBD name="lab">
+            <fvBD name="hr">
               <fvRsCtx tnFvCtxName="infra"/>
             </fvBD>
           </fvTenant>
@@ -239,9 +241,10 @@ class LoginTests(unittest.TestCase):
 
     def testCreation(self):
         self.login._url().should.equal('http://localhost/api/aaaLogin.xml')
-        self.login.Xml.should.equal(
-            '<aaaUser pwd="secret" name="jsmith"/>\n'
-        )
+        et = etree.XML(self.login.Xml)
+        et.tag.should.equal('aaaUser')
+        et.attrib['name'].should.equal('jsmith')
+        et.attrib['pwd'].should.equal('secret')
         self.login.Json.should.equal(textwrap.dedent('''\
         {
           "aaaUser": {
@@ -259,7 +262,7 @@ class LoginTests(unittest.TestCase):
         self.login.POST(format='json')
         (httpretty.last_request().method).should.equal('POST')
         (httpretty.last_request().path).should.equal('/api/aaaLogin.json')
-        (httpretty.last_request().body).should.equal(self.login.Json)
+        (httpretty.last_request().body.decode("utf-8")).should.equal(self.login.Json)
 
     @httpretty.activate
     def testXmlPOST(self):
@@ -269,7 +272,7 @@ class LoginTests(unittest.TestCase):
         self.login.POST(format='xml')
         (httpretty.last_request().method).should.equal('POST')
         (httpretty.last_request().path).should.equal('/api/aaaLogin.xml')
-        (httpretty.last_request().body).should.equal(self.login.Xml)
+        (httpretty.last_request().body.decode('utf8')).should.equal(self.login.Xml)
 
 
 class LoginRefreshTests(unittest.TestCase):
@@ -453,7 +456,7 @@ class MethodsTests(unittest.TestCase):
         (httpretty.last_request().path).should.equal(
             '/api/mo/uni/tn-test.json'
         )
-        (httpretty.last_request().body).should.equal(tenant.Json)
+        (httpretty.last_request().body.decode("utf-8")).should.equal(tenant.Json)
 
     @httpretty.activate
     def testMoXmlPOST(self):
@@ -463,4 +466,4 @@ class MethodsTests(unittest.TestCase):
         tenant.POST(format='xml')
         (httpretty.last_request().method).should.equal('POST')
         (httpretty.last_request().path).should.equal('/api/mo/uni/tn-test.xml')
-        (httpretty.last_request().body).should.equal(tenant.Xml)
+        (httpretty.last_request().body.decode('utf8')).should.equal(tenant.Xml)

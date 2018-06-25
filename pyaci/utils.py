@@ -63,7 +63,7 @@ def splitIntoRns(dn):
             return acc + [(acc[-1][1] + 1, x)]
 
     splittingPoints = reduce(reductionF, splitAt, [])
-    return map(lambda point: dn[point[0]:point[1]], splittingPoints)
+    return list(map(lambda point: dn[point[0]:point[1]], splittingPoints))
 
 
 @contextmanager
