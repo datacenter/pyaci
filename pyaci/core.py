@@ -309,7 +309,6 @@ class MoIter(Api):
     def __init__(self, parentApi, className, objects, aciClassMetas):
         self._parentApi = parentApi
         self._className = className
-        assert isinstance(objects, dict)
         self._objects = objects
         self._aciClassMetas = aciClassMetas
         self._aciClassMeta = aciClassMetas[self._className]
@@ -319,11 +318,21 @@ class MoIter(Api):
     def __call__(self, *args, **kwargs):
         identifiedBy = self._aciClassMeta['identifiedBy']
         if (len(args) >= 1):
-            assert len(args) == len(identifiedBy)
+            if len(args) != len(identifiedBy):
+                raise MoError(
+                    'Class `{}` requires {} naming properties, '
+                    'but only {} were provided'.format(
+                        self._className, len(identifiedBy), len(args)
+                    )
+                )
             identifierDict = dict(zip(identifiedBy, args))
         else:
             for name in identifiedBy:
-                assert name in kwargs
+                if name not in kwargs:
+                    raise MoError(
+                        'Missing naming property `{}` for class `{}`'.format(
+                            name, self._className
+                        ))
             identifierDict = kwargs
 
         rn = self._rnFormat.format(**identifierDict)
@@ -427,8 +436,9 @@ class Mo(Api):
     def Up(self, level=1):
         result = self
         for i in range(level):
+            if result.Parent is None:
+                raise MoError('Reached topRoot after {} levels'.format(i))
             result = result.Parent
-            assert result is not None
         return result
 
     @property
@@ -525,7 +535,9 @@ class Mo(Api):
         if sIds:
             subscriptionIds.extend([str(x) for x in sIds.split(',')])
         for element in root.iterchildren():
-            assert 'dn' in element.attrib
+            if 'dn' not in element.attrib:
+                raise MoError('Property `dn` not found in element {}'.format(
+                    _elementToString(element)))
             if element.tag == 'moCount':
                 mo = self.moCount()
             else:
@@ -537,14 +549,15 @@ class Mo(Api):
 
     def ParseJsonResponse(self, text, subscriptionIds=[]):
         response = json.loads(text)
-        assert 'imdata' in response
         sIds = response.get('subscriptionId', [])
         if sIds:
             subscriptionIds.extend(sIds)
         mos = []
         for element in response['imdata']:
             name, value = next(iteritems(element))
-            assert 'dn' in value['attributes']
+            if 'dn' not in value['attributes']:
+                raise MoError('Property `dn` not found in dict {}'.format(
+                    value['attributes']))
             mo = self.FromDn(value['attributes']['dn'])
             mo._fromObjectDict(element)
             mos.append(mo)
@@ -592,7 +605,10 @@ class Mo(Api):
             child._fromObjectDict(cdict)
 
     def _fromXmlElement(self, element, localOnly=False):
-        assert element.tag == self._className
+        if element.tag != self._className:
+            raise MoError(
+                'Root element tag `{}` does not match with class `{}`'
+                .format(element.tag, self._className))
 
         if localOnly and element.attrib.get('lcOwn', 'local') != 'local':
             return
@@ -819,7 +835,8 @@ class UploadPackageMethod(Api):
         # TODO (2015-05-23, Praveen Kumar): Fix this method to work
         # with certificate based authentication.
         root = self._rootApi()
-        assert format == 'xml'
+        if format != 'xml':
+            raise UserError('Unsupported format: {}'.format(format))
         if not os.path.exists(self._packageFile):
             raise ResourceError('File not found: ' + self.packageFile)
         with open(self._packageFile, 'r') as f:
