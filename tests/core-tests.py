@@ -3,6 +3,7 @@ import httpretty
 from lxml import etree
 import logging
 import os
+#pylint: disable=unused-import
 import sure                     # flake8: noqa
 import sys
 import textwrap

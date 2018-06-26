@@ -27,11 +27,7 @@ class UnaryFilter(Filter):
         self._value = value
 
     def __str__(self):
-        if isinstance(self._value, str):
-            value = '"{}"'.format(self._value)
-        else:
-            value = self._value
-        return '{}({})'.format(self._operator, value)
+        return '{}({})'.format(self._operator, self._value)
 
 
 class Not(UnaryFilter):

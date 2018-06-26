@@ -31,10 +31,7 @@ def getParentDn(dn):
         elif ch == '[':
             nestingLevel -= 1
 
-    if position == -1:
-        return ''
-    else:
-        return dn[:position]
+    return dn[:position]
 
 
 def splitIntoRns(dn):
@@ -75,7 +72,7 @@ def readOnlyTree(mo):
 
     """
     readOnlyTreeOldValue = mo.ReadOnlyTree
-    mo.ReadOnlyTree = False
+    mo.ReadOnlyTree = True
     try:
         yield mo
     finally:
@@ -110,7 +107,7 @@ def digestConfigExport(path, topRoot, format='xml'):
                         topRoot.polUni().Json = f.read()
 
 
-def distributeConfig(root, result=[]):
+def distributeConfig(root, result=None):
     """Distribute configuration from the given root MO into multiple
     roots.
 
@@ -126,6 +123,8 @@ def distributeConfig(root, result=[]):
     :param result: optional list of subtrees to append the result to.
 
     """
+    if result is None:
+        result = []
     for child in root.Children:
         if child._aciClassMeta['isContextRoot']:
             topRoot = root.TopRoot
