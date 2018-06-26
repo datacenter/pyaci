@@ -272,7 +272,7 @@ class LoginTests(unittest.TestCase):
         self.login.POST(format='xml')
         (httpretty.last_request().method).should.equal('POST')
         (httpretty.last_request().path).should.equal('/api/aaaLogin.xml')
-        (httpretty.last_request().body.decode('utf8')).should.equal(self.login.Xml)
+        (httpretty.last_request().body.decode('utf-8')).should.equal(self.login.Xml)
 
 
 class LoginRefreshTests(unittest.TestCase):
