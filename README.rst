@@ -9,6 +9,10 @@ PyACI: Python Bindings for Cisco ACI REST API
    :alt: Travis CI status
    :target: https://travis-ci.org/datacenter/pyaci
 
+.. image:: https://api.codacy.com/project/badge/Grade/e26d49e9575e4e3fae06be0da3824ee5
+   :alt: Codacy grade
+   :target: https://www.codacy.com/app/kprav33n/pyaci?utm_source=github.com&amp;utm_medium=referral&amp;utm_content=datacenter/pyaci&amp;utm_campaign=Badge_Grade
+
 .. image:: https://codecov.io/gh/datacenter/pyaci/branch/master/graph/badge.svg
    :alt: codecov status
    :target: https://codecov.io/gh/datacenter/pyaci

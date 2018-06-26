@@ -5,6 +5,7 @@ python:
 install:
   - pip install .[doc,test]
   - pip install codecov
+  - pip install codacy-coverage
 
 script:
   - mkdir ~/.aci-meta
@@ -13,3 +14,4 @@ script:
 
 after_success:
   - codecov
+  - python-codacy-coverage
