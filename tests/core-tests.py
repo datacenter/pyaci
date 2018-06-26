@@ -232,6 +232,66 @@ class MoTests(unittest.TestCase):
         </polUni>
         '''))
 
+    def testNotEnoughNamingProperties(self):
+        uni = self.tree.polUni()
+        uni.fvBDDef.when.called_with('dontcare').should.throw(
+            pyaci.errors.MoError,
+            'Class `fvBDDef` requires 2 naming properties, '
+            'but only 1 were provided')
+
+    def testNoNamingProperties(self):
+        uni = self.tree.polUni()
+        uni.fvBDDef.when.called_with().should.throw(
+            pyaci.errors.MoError,
+            'Missing naming property `bdDn` for class `fvBDDef`')
+
+    def testUpTooMany(self):
+        uni = self.tree.polUni()
+        uni.Up.when.called_with(2).should.throw(
+            pyaci.errors.MoError,
+            'Reached topRoot after 1 levels'
+        )
+
+    def testParseXmlWithoutDn(self):
+        xml=textwrap.dedent('''\
+        <?xml version="1.0" encoding="UTF-8"?>
+        <imdata totalCount="1">
+            <fvTenant name="mgmt"/>
+        </imdata>''')
+        (self.tree.ParseXmlResponse
+         .when.called_with(xml).should.throw(
+             pyaci.errors.MoError,
+             'Property `dn` not found in element <fvTenant name="mgmt"/>'
+         ))
+
+    def testParseJsonWithoutDn(self):
+        text=textwrap.dedent('''\
+        {
+          "imdata":[
+            {
+              "fvTenant":{
+                "attributes":{
+                  "name":"mgmt"
+                }
+              }
+            }
+          ],
+          "totalCount":"1"
+        }
+        ''')
+        (self.tree.ParseJsonResponse
+         .when.called_with(text).should.throw(
+             pyaci.errors.MoError,
+             "Property `dn` not found in dict"
+         ))
+
+    def testWrongXmlElement(self):
+        et = etree.XML('<fvTenant name="test"/>')
+        self.tree.polUni()._fromXmlElement.when.called_with(et).should.throw(
+            pyaci.errors.MoError,
+            'Root element tag `fvTenant` does not match with class `polUni`'
+        )
+
 
 class LoginTests(unittest.TestCase):
     def setUp(self):

@@ -629,6 +629,7 @@
     },
     "polUni": {
       "contains": {
+        "fvBDDef": "",
         "fvEpPCont": "",
         "fvTenant": ""
       },
@@ -673,9 +674,171 @@
       },
       "rnFormat": "uni",
       "rnMap": {
+        "bd-": "fvBDDef",
         "epp": "fvEpPCont",
         "tn-": "fvTenant"
       }
+    },
+    "fvBDDef": {
+      "contains": {
+        "dhcpLblDef": "",
+        "faultCounts": "",
+        "faultDelegate": "",
+        "fhsBDDef": "",
+        "fvAEPgCont": "",
+        "fvBDConfigIssues": "",
+        "fvEpRetDef": "",
+        "fvOutCont": "",
+        "fvRtSrcToBDDef": "",
+        "fvRtToRemoteBDDef": "",
+        "healthInst": "",
+        "igmpIfDef": "",
+        "igmpSnoopDef": "",
+        "ipRouteDef": "",
+        "ndIfPolDef": "",
+        "netflowExporterPolHolder": "",
+        "netflowMonitorPolHolder": ""
+      },
+      "identifiedBy": [
+        "bdDn",
+        "isSvc"
+      ],
+      "isAbstract": false,
+      "isConfigurable": false,
+      "isContextRoot": true,
+      "properties": {
+        "OptimizeWanBandwidth": {
+          "isConfigurable": true
+        },
+        "accEncap": {
+          "isConfigurable": false
+        },
+        "arpFlood": {
+          "isConfigurable": true
+        },
+        "bcastP": {
+          "isConfigurable": false
+        },
+        "bdDn": {
+          "isConfigurable": true
+        },
+        "childAction": {
+          "isConfigurable": false
+        },
+        "configIssues": {
+          "isConfigurable": false
+        },
+        "ctxDefDn": {
+          "isConfigurable": false
+        },
+        "ctxDefStQual": {
+          "isConfigurable": false
+        },
+        "descr": {
+          "isConfigurable": true
+        },
+        "dn": {
+          "isConfigurable": false
+        },
+        "epClear": {
+          "isConfigurable": true
+        },
+        "epMoveDetectMode": {
+          "isConfigurable": true
+        },
+        "intersiteBumTrafficAllow": {
+          "isConfigurable": true
+        },
+        "intersiteL2Stretch": {
+          "isConfigurable": true
+        },
+        "ipLearning": {
+          "isConfigurable": true
+        },
+        "isCopySvc": {
+          "isConfigurable": false
+        },
+        "isPolicyEnforced": {
+          "isConfigurable": false
+        },
+        "isSvc": {
+          "isConfigurable": true
+        },
+        "lcOwn": {
+          "isConfigurable": false
+        },
+        "limitIpLearnToSubnets": {
+          "isConfigurable": true
+        },
+        "llAddr": {
+          "isConfigurable": true
+        },
+        "mac": {
+          "isConfigurable": true
+        },
+        "mcastAllow": {
+          "isConfigurable": true
+        },
+        "missingContent": {
+          "isConfigurable": false
+        },
+        "modTs": {
+          "isConfigurable": false
+        },
+        "monPolDn": {
+          "isConfigurable": false
+        },
+        "mtu": {
+          "isConfigurable": false
+        },
+        "multiDstPktAct": {
+          "isConfigurable": true
+        },
+        "name": {
+          "isConfigurable": true
+        },
+        "nameAlias": {
+          "isConfigurable": true
+        },
+        "ownerKey": {
+          "isConfigurable": true
+        },
+        "ownerTag": {
+          "isConfigurable": true
+        },
+        "pcTag": {
+          "isConfigurable": false
+        },
+        "rn": {
+          "isConfigurable": false
+        },
+        "scope": {
+          "isConfigurable": false
+        },
+        "seg": {
+          "isConfigurable": false
+        },
+        "status": {
+          "isConfigurable": false
+        },
+        "type": {
+          "isConfigurable": false
+        },
+        "unicastRoute": {
+          "isConfigurable": true
+        },
+        "unkMacUcastAct": {
+          "isConfigurable": true
+        },
+        "unkMcastAct": {
+          "isConfigurable": true
+        },
+        "vmac": {
+          "isConfigurable": true
+        }
+      },
+      "rnFormat": "bd-[{bdDn}]-isSvc-{isSvc}",
+      "rnMap": {}
     },
     "topRoot": {
       "contains": {
