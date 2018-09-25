@@ -21,6 +21,12 @@ children = ApiOptions([('query-target', 'children')])
 """Query the entire subtree."""
 subtree = ApiOptions([('query-target', 'subtree')])
 
+"""Query the object with all the children."""
+rspSubtreeChildren = ApiOptions([('rsp-subtree', 'children')])
+
+"""Query the object with the entire subtree."""
+rspSubtreeFull = ApiOptions([('rsp-subtree', 'full')])
+
 """Include all the faults along with the entire subtree."""
 faults = ApiOptions([('rsp-subtree-include', 'faults,no-scoped')])
 
@@ -68,3 +74,11 @@ subscribe = ApiOptions([('subscription', 'yes')])
 def filter(filt):
     """Restrict to the specified filter"""
     return ApiOptions([('query-target-filter', str(filt))])
+
+
+def subtreeFilter(filt):
+    """Restrict to the specified filter"""
+    return (ApiOptions([('rsp-subtree-filter', str(filt))]) &
+            ApiOptions([('rsp-subtree-include', 'required')]) &
+            ApiOptions([('rsp-subtree', 'full')]))
+
