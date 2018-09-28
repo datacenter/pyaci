@@ -13,7 +13,7 @@ from lxml import etree
 from requests import Request
 from threading import Event
 from io import BytesIO
-from functools import reduce
+from functools import partial, reduce
 from six import iteritems, iterkeys, itervalues
 import base64
 import getpass
@@ -234,10 +234,10 @@ class Node(Api):
                     self.webSocketUrl)
         ws = websocket.WebSocketApp(
             self.webSocketUrl,
-            on_open=self._handleWsOpen,
-            on_message=self._handleWsMessage,
-            on_error=self._handleWsError,
-            on_close=self._handleWsClose)
+            on_open=partial(Node._handleWsOpen, self),
+            on_message=partial(Node.self._handleWsMessage, self),
+            on_error=partial(Node.self._handleWsError, self),
+            on_close=partial(Node.self._handleWsClose, self))
         wst = threading.Thread(target=lambda: ws.run_forever(
             sslopt={"cert_reqs": ssl.CERT_NONE}))
         wst.daemon = True
