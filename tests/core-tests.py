@@ -338,7 +338,7 @@ class LoginTests(unittest.TestCase):
 
 class LoginRefreshTests(unittest.TestCase):
     def setUp(self):
-        self.login = pyaci.Node('http://localhost').methods.LoginRefresh
+        self.login = pyaci.Node('http://localhost').methods.LoginRefresh()
 
     def testCreation(self):
         self.login._url().should.equal('http://localhost/api/aaaRefresh.xml')
