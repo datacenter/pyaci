@@ -79,5 +79,6 @@ setup(
     scripts=[
         'scripts/metagen.py',
         'scripts/rmetagen.py',
+        'scripts/xml2pyaci',
     ]
 )

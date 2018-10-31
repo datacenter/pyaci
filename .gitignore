@@ -4,6 +4,9 @@ docs/_build
 # Tests.
 tests/.coverage
 tests/cover
+.coverage
+.pytest_cache
+cover
 
 # Distribution
 *.egg-info/

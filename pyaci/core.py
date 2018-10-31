@@ -783,6 +783,8 @@ class LoginRefreshMethod(Api):
     def _relativeUrl(self):
         return 'aaaRefresh'
 
+    def __call__(self):
+        return self
 
 class ChangeCertMethod(Api):
     def __init__(self, parentApi):
