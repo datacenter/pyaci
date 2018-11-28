@@ -235,9 +235,9 @@ class Node(Api):
         ws = websocket.WebSocketApp(
             self.webSocketUrl,
             on_open=partial(Node._handleWsOpen, self),
-            on_message=partial(Node.self._handleWsMessage, self),
-            on_error=partial(Node.self._handleWsError, self),
-            on_close=partial(Node.self._handleWsClose, self))
+            on_message=partial(Node._handleWsMessage, self),
+            on_error=partial(Node._handleWsError, self),
+            on_close=partial(Node._handleWsClose, self))
         wst = threading.Thread(target=lambda: ws.run_forever(
             sslopt={"cert_reqs": ssl.CERT_NONE}))
         wst.daemon = True
@@ -786,6 +786,25 @@ class LoginRefreshMethod(Api):
     def __call__(self):
         return self
 
+
+class SubscriptionRefreshMethod(Api):
+    def __init__(self, parentApi):
+        super(SubscriptionRefreshMethod, self).__init__(parentApi=parentApi)
+        self._moClassName = 'subscriptionRefresh'
+
+    @property
+    def Json(self):
+        return ''
+
+    @property
+    def Xml(self):
+        return ''
+
+    @property
+    def _relativeUrl(self):
+        return 'subscriptionRefresh'
+
+
 class ChangeCertMethod(Api):
     def __init__(self, parentApi):
         super(ChangeCertMethod, self).__init__(parentApi=parentApi)
@@ -933,6 +952,10 @@ class MethodApi(Api):
     @property
     def LoginRefresh(self):
         return LoginRefreshMethod(parentApi=self)
+
+    @property
+    def SubscriptionRefresh(self):
+        return SubscriptionRefreshMethod(parentApi=self)
 
     @property
     def ChangeCert(self):

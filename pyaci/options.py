@@ -98,3 +98,7 @@ def subtreeFilter(filt):
     return (ApiOptions([('rsp-subtree-filter', str(filt))]) &
             ApiOptions([('rsp-subtree-include', 'required')]) &
             ApiOptions([('rsp-subtree', 'full')]))
+
+
+def subscriptionRefresh(subscriptionId):
+    return ApiOptions([('id', subscriptionId)])
