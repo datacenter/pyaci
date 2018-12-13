@@ -791,6 +791,7 @@ class SubscriptionRefreshMethod(Api):
     def __init__(self, parentApi):
         super(SubscriptionRefreshMethod, self).__init__(parentApi=parentApi)
         self._moClassName = 'subscriptionRefresh'
+        self._properties = {}
 
     @property
     def Json(self):
@@ -804,6 +805,14 @@ class SubscriptionRefreshMethod(Api):
     def _relativeUrl(self):
         return 'subscriptionRefresh'
 
+    def __call__(self, id):
+        self._properties['id'] = id
+        return self
+
+    def _url(self, format=None, **kwargs):
+        url = super(SubscriptionRefreshMethod, self)._url(format, **kwargs)
+        url += '?id=' + self._properties['id']
+        return url
 
 class ChangeCertMethod(Api):
     def __init__(self, parentApi):
