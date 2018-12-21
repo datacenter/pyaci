@@ -26,6 +26,8 @@ import requests
 import ssl
 import threading
 import websocket
+import xmltodict
+import time
 try:
     from urllib.parse import unquote
 except ImportError:
@@ -40,6 +42,7 @@ from . import options
 
 logger = logging.getLogger(__name__)
 payloadFormat = 'xml'
+DELTA = 5 # time delta to allow for any variations of clock...
 
 
 def subLogger(name):
@@ -195,6 +198,8 @@ class Node(Api):
         self._wsMos = defaultdict(deque)
         self._wsReady = Event()
         self._wsEvents = {}
+        self._autoRefresh = False
+        self._autoRefreshThread = None
 
     @property
     def session(self):
@@ -304,6 +309,11 @@ class Node(Api):
     def _rootApi(self):
         return self
 
+    def _stopArThread(self):
+        if self._autoRefresh and self._autoRefreshThread is not None:
+            self._autoRefreshThread.stop()
+            self._autoRefreshThread = None
+            self._autoRefresh = False
 
 class MoIter(Api):
     def __init__(self, parentApi, className, objects, aciClassMetas):
@@ -697,12 +707,90 @@ class Mo(Api):
         rn = rnFormat.format(**attributes)
         return self._spawnChildFromRn(className, rn)
 
+class autoRefreshThread(threading.Thread):
+    def __init__(self, rootApi):
+        super(autoRefreshThread, self).__init__()
+        self._stop_event = threading.Event()
+        self._rootApi = rootApi
+
+    def stop(self):
+        self._stop_event.set()
+
+    def isStopped(self):
+        return self._stop_event.is_set()
+
+    def run(self):
+        logger.debug('arThread: Starting up...')
+        REFRESH_BEFORE = 60  #approx - this many seconds before expiry, do refresh
+        CHECK_INTERVAL = 10   #how long to sleep before waking to check
+        while True:
+            time.sleep(CHECK_INTERVAL)
+            if self.isStopped():
+                break
+            # Check if need to refresh
+            now = int(time.time())
+            if now + REFRESH_BEFORE > self._rootApi._login['nextRefreshBefore']:
+                logger.debug('arThread: Need to refresh Token...')
+                refObj = self._rootApi.methods.LoginRefresh()
+                resp = refObj.POST()
+                # Process refresh response
+                if payloadFormat != 'xml' or resp.text[:5] != '<?xml':
+                    logger.error('XML format of aaaLogin is only supported now')
+                    continue
+                doc = xmltodict.parse(resp.text)
+                if 'imdata' in doc:
+                    if 'aaaLogin' in doc['imdata']:
+                        root = self._rootApi
+                        root._login = {}
+                        lastLogin = int(time.time())
+                        root._login['lastLoginTime'] = lastLogin
+                        root._login['nextRefreshBefore'] = lastLogin - DELTA + \
+                                                                       int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
+                    #end of if 'aaaLogin'...
+                #end of if 'imdata'...
+            #end if now +...
+        #end while True
+        logger.debug('arThread: Terminating')
+
 
 class LoginMethod(Api):
     def __init__(self, parentApi):
         super(LoginMethod, self).__init__(parentApi=parentApi)
         self._moClassName = 'aaaUser'
         self._properties = {}
+
+    def POST(self):
+        resp = super(LoginMethod, self).POST()
+
+        if resp is None or resp.status_code != 200:
+            logger.debug('Login failed...')
+            return resp
+
+        if payloadFormat != 'xml' or resp.text[:5] != '<?xml':
+            logger.error('XML format of aaaLogin is only supported now')
+            return resp
+
+        doc = xmltodict.parse(resp.text)
+        if 'imdata' in doc:
+            if 'aaaLogin' in doc['imdata']:
+                root = self._rootApi()
+                root._login = {}
+                root._login['version'] = doc['imdata']['aaaLogin']['@version']
+                root._login['userName'] = doc['imdata']['aaaLogin']['@userName']
+                lastLogin = int(time.time())
+                root._login['lastLoginTime'] = lastLogin
+                root._login['nextRefreshBefore'] = lastLogin - DELTA + \
+                                                               int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
+                logger.debug(root._login)
+                if root._autoRefresh:
+                    arThread = autoRefreshThread(root)
+                    root._autoRefreshThread = arThread
+                    arThread.daemon = True
+                    arThread.start()
+                #end of if root._autoRefresh
+            #end of if 'aaaLogin'...
+        #end of if 'imdata'...
+        return resp
 
     @property
     def Json(self):
@@ -724,7 +812,7 @@ class LoginMethod(Api):
     def _relativeUrl(self):
         return 'aaaLogin'
 
-    def __call__(self, name, password=None, passwordFile=None):
+    def __call__(self, name, password=None, passwordFile=None, autoRefresh=False):
         if password is None and passwordFile is None:
             password = getpass.getpass('Enter {} password: '.format(name))
         elif password is None:
@@ -732,8 +820,9 @@ class LoginMethod(Api):
                 password = f.read()
         self._properties['name'] = name
         self._properties['pwd'] = password
+        rootApi = self._rootApi()
+        rootApi._autoRefresh = autoRefresh
         return self
-
 
 class AppLoginMethod(Api):
     def __init__(self, parentApi):
@@ -819,6 +908,43 @@ class ChangeCertMethod(Api):
             self._properties['data'] = f.read()
         return self
 
+class LogoutMethod(Api):
+    def __init__(self, parentApi):
+        super(LogoutMethod, self).__init__(parentApi=parentApi)
+        self._moClassName = 'aaaUser'
+        self._properties = {}
+
+    def POST(self):
+        resp = super(LogoutMethod, self).POST()
+        if resp.status_code == 200:
+            self._rootApi()._stopArThread()
+
+        return resp
+
+    @property
+    def Json(self):
+        result = {}
+        result[self._moClassName] = {'attributes': self._properties.copy()}
+        return json.dumps(result,
+                          sort_keys=True, indent=2, separators=(',', ': '))
+
+    @property
+    def Xml(self):
+        result = etree.Element(self._moClassName)
+
+        for key, value in self._properties.items():
+            result.set(key, value)
+
+        return _elementToString(result)
+
+    @property
+    def _relativeUrl(self):
+        return 'aaaLogout'
+
+    def __call__(self):
+        root = self._rootApi()
+        self._properties['name'] = root._login['userName']
+        return self
 
 class UploadPackageMethod(Api):
     def __init__(self, parentApi):
@@ -933,6 +1059,10 @@ class MethodApi(Api):
     @property
     def LoginRefresh(self):
         return LoginRefreshMethod(parentApi=self)
+
+    @property
+    def Logout(self):
+        return LogoutMethod(parentApi=self)
 
     @property
     def ChangeCert(self):

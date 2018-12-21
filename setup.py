@@ -57,6 +57,7 @@ setup(
         'requests',
         'scp',
         'websocket-client',
+        'xmltodict',
     ],
 
     # List additional groups of dependencies here (e.g. development
