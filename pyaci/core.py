@@ -707,6 +707,7 @@ class Mo(Api):
         rn = rnFormat.format(**attributes)
         return self._spawnChildFromRn(className, rn)
 
+
 class autoRefreshThread(threading.Thread):
     def __init__(self, rootApi):
         super(autoRefreshThread, self).__init__()
@@ -746,10 +747,6 @@ class autoRefreshThread(threading.Thread):
                         root._login['lastLoginTime'] = lastLogin
                         root._login['nextRefreshBefore'] = lastLogin - DELTA + \
                                                                        int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
-                    #end of if 'aaaLogin'...
-                #end of if 'imdata'...
-            #end if now +...
-        #end while True
         logger.debug('arThread: Terminating')
 
 
@@ -787,9 +784,6 @@ class LoginMethod(Api):
                     root._autoRefreshThread = arThread
                     arThread.daemon = True
                     arThread.start()
-                #end of if root._autoRefresh
-            #end of if 'aaaLogin'...
-        #end of if 'imdata'...
         return resp
 
     @property
@@ -823,6 +817,7 @@ class LoginMethod(Api):
         rootApi = self._rootApi()
         rootApi._autoRefresh = autoRefresh
         return self
+
 
 class AppLoginMethod(Api):
     def __init__(self, parentApi):
@@ -875,6 +870,7 @@ class LoginRefreshMethod(Api):
     def __call__(self):
         return self
 
+
 class ChangeCertMethod(Api):
     def __init__(self, parentApi):
         super(ChangeCertMethod, self).__init__(parentApi=parentApi)
@@ -907,6 +903,7 @@ class ChangeCertMethod(Api):
         with open(certFile, 'r') as f:
             self._properties['data'] = f.read()
         return self
+
 
 class LogoutMethod(Api):
     def __init__(self, parentApi):
@@ -945,6 +942,7 @@ class LogoutMethod(Api):
         root = self._rootApi()
         self._properties['name'] = root._login['userName']
         return self
+
 
 class UploadPackageMethod(Api):
     def __init__(self, parentApi):
