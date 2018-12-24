@@ -465,7 +465,7 @@ class MethodsTests(unittest.TestCase):
     def testMoXmlGETWithOptions(self):
         httpretty.register_uri(
             httpretty.GET,
-            'http://localhost/api/mo/uni/tn-mgmt.xml?rsp-subtree=full&',
+            'http://localhost/api/mo/uni/tn-mgmt.xml?rsp-subtree=full',
             body=textwrap.dedent('''\
         <?xml version="1.0" encoding="UTF-8"?>
         <imdata totalCount="1">
@@ -481,7 +481,7 @@ class MethodsTests(unittest.TestCase):
         )
         (httpretty.last_request().method).should.equal('GET')
         (httpretty.last_request().path).should_not.be.different_of(
-            '/api/mo/uni/tn-mgmt.xml?rsp-subtree=full&'
+            '/api/mo/uni/tn-mgmt.xml?rsp-subtree=full'
         )
 
         result = result[0]
