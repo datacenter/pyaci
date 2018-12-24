@@ -792,8 +792,8 @@ class LoginMethod(Api):
         self._moClassName = 'aaaUser'
         self._properties = {}
 
-    def POST(self):
-        resp = super(LoginMethod, self).POST()
+    def POST(self, format=None):
+        resp = super(LoginMethod, self).POST(format=format)
 
         if resp is None or resp.status_code != 200:
             logger.debug('Login failed...')
