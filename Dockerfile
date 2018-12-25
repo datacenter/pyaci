@@ -14,8 +14,10 @@ RUN apk add --update libffi-dev libxml2-dev libxslt-dev openssl openssl-dev
 
 WORKDIR /localws
 
+#hadolint ignore=DL3013
 RUN pip install -U pip
 COPY . $WORKDIR
+#hadolint ignore=DL3013
 RUN pip install $PYACI_SOURCE
 
 COPY meta/aci-meta.limited.json /root/.aci-meta/aci-meta.limited.json
