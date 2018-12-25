@@ -8,6 +8,7 @@ import sure                     # flake8: noqa
 import sys
 import textwrap
 import unittest
+import time
 
 paths = [
     '..',
