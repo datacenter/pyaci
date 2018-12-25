@@ -349,7 +349,7 @@ class LogoutTests(unittest.TestCase):
         et = etree.XML(self.logout.Xml)
         et.tag.should.equal('aaaUser')
         et.attrib['name'].should.equal('jsmith')
-        self.login.Json.should.equal(textwrap.dedent('''\
+        self.logout.Json.should.equal(textwrap.dedent('''\
         {
           "aaaUser": {
             "attributes": {
@@ -400,7 +400,7 @@ class RefreshSubscriptionTests(unittest.TestCase):
         self.rfs = self.node.methods.RefreshSubscriptions('100001')
 
     def testCreation(self):
-        self.rfs._url().should.equal('http://localhost/api/subscriptionRefresh.xml?id=100001')
+        self.rfs._url().should.equal('http://localhost/api/subscriptionRefresh.xml')
 
     @httpretty.activate
     def testJsonPOST(self):
