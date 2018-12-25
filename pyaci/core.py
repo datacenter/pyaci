@@ -206,6 +206,7 @@ class Node(Api):
         self._wsEvents = {}
         self._autoRefresh = False
         self._autoRefreshThread = None
+        self._login = {}
 
     @property
     def session(self):
@@ -262,7 +263,7 @@ class Node(Api):
         self._wsReady.wait()
         if self._wsStatus != WS_OPEN :
             if self._wsError is not None:
-                raise(self._wsError)
+                raise Exception(self._wsError)
             raise Exception('Error occurred when opening Websocket...')
 
     def _handleWsOpen(self):
@@ -792,8 +793,8 @@ class LoginMethod(Api):
         self._moClassName = 'aaaUser'
         self._properties = {}
 
-    def POST(self, format=None):
-        resp = super(LoginMethod, self).POST(format=format)
+    def POST(self, format=None, **kwargs):
+        resp = super(LoginMethod, self).POST(format=format, **kwargs)
 
         if resp is None or resp.status_code != 200:
             logger.debug('Login failed...')
@@ -974,9 +975,12 @@ class LogoutMethod(Api):
     def _relativeUrl(self):
         return 'aaaLogout'
 
-    def __call__(self):
+    def __call__(self, user=None):
         root = self._rootApi()
-        self._properties['name'] = root._login['userName']
+        if user is None:
+            self._properties['name'] = root._login['userName']
+        else:
+            self._properties['name'] = user
         return self
 
 
@@ -984,10 +988,11 @@ class RefreshSubscriptionsMethod(Api):
     def __init__(self, parentApi):
         super(RefreshSubscriptionsMethod, self).__init__(parentApi=parentApi)
 
-    def POST(self):
+    def POST(self, format=None, **kwargs):
         for sid in self._ids.split(','):
             args = {'id': sid}
-            resp = super(RefreshSubscriptionsMethod, self).POST(**args)
+            args.update(kwargs)
+            resp = super(RefreshSubscriptionsMethod, self).POST(format=format, **args)
             ''' Current Subscription Refresh does one id at a time, so
             we have to loop here - once it supports multiple ids, then
             give the entire set of ids

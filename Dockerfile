@@ -12,9 +12,11 @@ ARG PYACI_SOURCE=https://github.com/datacenter/pyaci/archive/master.zip
 RUN apk add --update build-base
 RUN apk add --update libffi-dev libxml2-dev libxslt-dev openssl openssl-dev
 
+WORKDIR /localws
+
 RUN pip install -U pip
-COPY . /localws
-RUN cd /localws && pip install $PYACI_SOURCE
+COPY . $WORKDIR
+RUN pip install $PYACI_SOURCE
 
 COPY meta/aci-meta.limited.json /root/.aci-meta/aci-meta.limited.json
 RUN cd /root/.aci-meta && ln -s aci-meta.limited.json aci-meta.json
