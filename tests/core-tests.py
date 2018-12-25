@@ -353,7 +353,7 @@ class LogoutTests(unittest.TestCase):
         {
           "aaaUser": {
             "attributes": {
-              "name": "jsmith",
+              "name": "jsmith"
             }
           }
         }'''))
