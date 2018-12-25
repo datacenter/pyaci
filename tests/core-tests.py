@@ -441,7 +441,7 @@ class AutoRefreshTests(unittest.TestCase):
 <aaaUserDomain name="all" readRoleBitmask="0" writeRoleBitmask="1"/>
 </aaaLogin></imdata>'''
         self.node._login['nextRefreshBefore']=int(time.time()) - 120
-        httpretty.register_uri(httpretty.POST,
+        httpretty.register_uri(httpretty.GET,
                                'http://localhost/api/aaaRefresh.xml',
                                body=refresh_xml_body,
                                content_type='application/xml',
@@ -450,12 +450,12 @@ class AutoRefreshTests(unittest.TestCase):
         self.node._wsEvents={}
         self.node._wsEvents['123456789']=[]
         self.node._wsLastRefresh = int(time.time()) - 60
-        httpretty.register_uri(httpretty.POST,
+        httpretty.register_uri(httpretty.GET,
                                'http://localhost/api/subscriptionRefresh.xml?id=123456789',
                                body='',
                                status=200)
         self.node._autoRefreshThread.run(once=True)
-        (httpretty.last_request().method).should.equal('POST')
+        (httpretty.last_request().method).should.equal('GET')
         (httpretty.last_request().path).should.equal('/api/subscriptionRefresh.xml?id=123456789')
 
 
@@ -468,20 +468,20 @@ class RefreshSubscriptionTests(unittest.TestCase):
         self.rfs._url().should.equal('http://localhost/api/subscriptionRefresh.xml')
 
     @httpretty.activate
-    def testJsonPOST(self):
-        httpretty.register_uri(httpretty.POST,
+    def testJsonGET(self):
+        httpretty.register_uri(httpretty.GET,
                                'http://localhost/api/subscriptionRefresh.json?id=100001')
-        self.rfs.POST(format='json')
-        (httpretty.last_request().method).should.equal('POST')
+        self.rfs.GET(format='json')
+        (httpretty.last_request().method).should.equal('GET')
         (httpretty.last_request().path).should.equal('/api/subscriptionRefresh.json?id=100001')
 
     @httpretty.activate
-    def testXmlPOST(self):
-        httpretty.register_uri(httpretty.POST,
+    def testXmlGET(self):
+        httpretty.register_uri(httpretty.GET,
                                'http://localhost/api/subscriptionRefresh.xml?id=100001')
 
-        self.rfs.POST(format='xml')
-        (httpretty.last_request().method).should.equal('POST')
+        self.rfs.GET(format='xml')
+        (httpretty.last_request().method).should.equal('GET')
         (httpretty.last_request().path).should.equal('/api/subscriptionRefresh.xml?id=100001')
 
 

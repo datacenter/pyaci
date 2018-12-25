@@ -757,7 +757,7 @@ class autoRefreshThread(threading.Thread):
             if now + REFRESH_BEFORE > self._rootApi._login['nextRefreshBefore']:
                 logger.debug('arThread: Need to refresh Token...')
                 refObj = self._rootApi.methods.LoginRefresh()
-                resp = refObj.POST()
+                resp = refObj.GET()
                 # Process refresh response
                 if payloadFormat != 'xml' or resp.text[:5] != '<?xml':
                     logger.error('XML format of aaaLogin is only supported now')
@@ -776,11 +776,10 @@ class autoRefreshThread(threading.Thread):
                 ids=''
                 for k in self._rootApi._wsEvents:
                     ids+=k+','
-                if len(ids) > 0:
-                    ids = ids[:-1]
+                ids = ids[:-1]
                 logger.debug('Refreshing Ids: %s', ids)
                 wsRefreshObj = self._rootApi.methods.RefreshSubscriptions(ids)
-                resp = wsRefreshObj.POST()
+                resp = wsRefreshObj.GET()
                 logger.debug('Got Response'+str(resp))
                 if resp.status_code != 200:
                     logger.error('Subscription Refresh Failed !!' + resp.text)
@@ -992,15 +991,15 @@ class RefreshSubscriptionsMethod(Api):
     def __init__(self, parentApi):
         super(RefreshSubscriptionsMethod, self).__init__(parentApi=parentApi)
 
-    def POST(self, format=None, **kwargs):
+    def GET(self, format=None, **kwargs):
+        resp = None
         for sid in self._ids.split(','):
             args = {'id': sid}
             args.update(kwargs)
-            resp = super(RefreshSubscriptionsMethod, self).POST(format=format, **args)
+            resp = super(RefreshSubscriptionsMethod, self).GET(format=format, **args)
             ''' Current Subscription Refresh does one id at a time, so
             we have to loop here - once it supports multiple ids, then
-            give the entire set of ids
-            '''
+            give the entire set of ids '''
         return resp
 
     @property
