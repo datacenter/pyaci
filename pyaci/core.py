@@ -336,6 +336,7 @@ class Node(Api):
             self._autoRefreshThread = None
             self._autoRefresh = False
 
+
 class MoIter(Api):
     def __init__(self, parentApi, className, objects, aciClassMetas):
         self._parentApi = parentApi
@@ -741,7 +742,8 @@ class autoRefreshThread(threading.Thread):
     def isStopped(self):
         return self._stop_event.is_set()
 
-    def run(self):
+    def run(self, once=False):
+        ''' once flag is used for test only '''
         logger.debug('arThread: Starting up...')
         REFRESH_BEFORE = 60  #approx - this many seconds before expiry, do refresh
         CHECK_INTERVAL = 10  #how long to sleep before waking to check
@@ -784,6 +786,8 @@ class autoRefreshThread(threading.Thread):
                     logger.error('Subscription Refresh Failed !!' + resp.text)
                 else:
                     self._rootApi._wsLastRefresh = now
+            if once:
+                break
         logger.debug('arThread: Terminating')
 
 
