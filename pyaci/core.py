@@ -948,8 +948,8 @@ class LogoutMethod(Api):
         self._moClassName = 'aaaUser'
         self._properties = {}
 
-    def POST(self):
-        resp = super(LogoutMethod, self).POST()
+    def POST(self, format=None, **kwargs):
+        resp = super(LogoutMethod, self).POST(format=format, **kwargs)
         if resp.status_code == 200:
             self._rootApi()._stopArThread()
 

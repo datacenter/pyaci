@@ -397,7 +397,7 @@ class LoginRefreshTests(unittest.TestCase):
 class RefreshSubscriptionTests(unittest.TestCase):
     def setUp(self):
         self.node = pyaci.Node('http://localhost')
-        self.rfs = self.node.RefreshSubscriptionsMethod('100001')
+        self.rfs = self.node.RefreshSubscriptions('100001')
 
     def testCreation(self):
         self.rfs._url().should.equal('http://localhost/api/subscriptionRefresh.xml?id=100001')
