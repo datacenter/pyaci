@@ -454,7 +454,8 @@ class AutoRefreshTests(unittest.TestCase):
                                'http://localhost/api/subscriptionRefresh.xml?id=123456789',
                                body='',
                                status=200)
-        self.node._autoRefreshThread.run(once=True)
+        self.node._autotest = True
+        self.node._autoRefreshThread.run()
         (httpretty.last_request().method).should.equal('GET')
         (httpretty.last_request().path).should.equal('/api/subscriptionRefresh.xml?id=123456789')
 

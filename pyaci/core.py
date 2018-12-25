@@ -207,6 +207,7 @@ class Node(Api):
         self._autoRefresh = False
         self._autoRefreshThread = None
         self._login = {}
+        self._autotest = False
 
     @property
     def session(self):
@@ -742,8 +743,7 @@ class autoRefreshThread(threading.Thread):
     def isStopped(self):
         return self._stop_event.is_set()
 
-    def run(self, once=False):
-        ''' once flag is used for test only '''
+    def run(self):
         logger.debug('arThread: Starting up...')
         REFRESH_BEFORE = 60  #approx - this many seconds before expiry, do refresh
         CHECK_INTERVAL = 10  #how long to sleep before waking to check
@@ -785,7 +785,8 @@ class autoRefreshThread(threading.Thread):
                     logger.error('Subscription Refresh Failed !!' + resp.text)
                 else:
                     self._rootApi._wsLastRefresh = now
-            if once:
+            if self._rootApi._autotest:
+                #If we are running this from the test code - lets do this once only.
                 break
         logger.debug('arThread: Terminating')
 
@@ -997,9 +998,9 @@ class RefreshSubscriptionsMethod(Api):
             args = {'id': sid}
             args.update(kwargs)
             resp = super(RefreshSubscriptionsMethod, self).GET(format=format, **args)
-            ''' Current Subscription Refresh does one id at a time, so
-            we have to loop here - once it supports multiple ids, then
-            give the entire set of ids '''
+            # Current Subscription Refresh does one id at a time, so
+            # we have to loop here - once it supports multiple ids, then
+            # give the entire set of ids
         return resp
 
     @property
