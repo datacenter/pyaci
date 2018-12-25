@@ -362,10 +362,10 @@ class LogoutTests(unittest.TestCase):
     def testJsonPOST(self):
         httpretty.register_uri(httpretty.POST,
                                'http://localhost/api/aaaLogout.json')
-        self.login.POST(format='json')
+        self.logout.POST(format='json')
         (httpretty.last_request().method).should.equal('POST')
         (httpretty.last_request().path).should.equal('/api/aaaLogout.json')
-        (httpretty.last_request().body.decode("utf-8")).should.equal(self.login.Json)
+        (httpretty.last_request().body.decode("utf-8")).should.equal(self.logout.Json)
 
     @httpretty.activate
     def testXmlPOST(self):
@@ -375,7 +375,7 @@ class LogoutTests(unittest.TestCase):
         self.logout.POST(format='xml')
         (httpretty.last_request().method).should.equal('POST')
         (httpretty.last_request().path).should.equal('/api/aaaLogout.xml')
-        (httpretty.last_request().body.decode('utf-8')).should.equal(self.login.Xml)
+        (httpretty.last_request().body.decode('utf-8')).should.equal(self.logout.Xml)
 
 
 class LoginRefreshTests(unittest.TestCase):
@@ -397,7 +397,7 @@ class LoginRefreshTests(unittest.TestCase):
 class RefreshSubscriptionTests(unittest.TestCase):
     def setUp(self):
         self.node = pyaci.Node('http://localhost')
-        self.rfs = self.node.RefreshSubscriptions('100001')
+        self.rfs = self.node.methods.RefreshSubscriptions('100001')
 
     def testCreation(self):
         self.rfs._url().should.equal('http://localhost/api/subscriptionRefresh.xml?id=100001')
