@@ -449,7 +449,7 @@ class AutoRefreshTests(unittest.TestCase):
         self.node._login['nextRefreshBefore']=int(time.time()) - 120
         self.node._autoRefreshThread._refreshLoginIfNeeded()
         (httpretty.last_request().method).should.equal('GET')
-        (httpretty.last_request().path).should.equal('/api/aaaRefresh.json')
+        (httpretty.last_request().path).should.equal('/api/aaaRefresh.xml')
 
         httpretty.register_uri(httpretty.GET,
                                'http://localhost/api/subscriptionRefresh.xml?id=123456789',
