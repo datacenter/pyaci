@@ -46,7 +46,7 @@ DELTA = 5 # time delta to allow for any variations of clock...
 
 # Web Socket Statuses
 WS_OPENING = 'Websocket Opening.'
-WS_OPEN    = 'Websocket Opened.'
+WS_OPENED  = 'Websocket Opened.'
 WS_ERRORED = 'Websocket Errored.'
 WS_CLOSED  = 'Websocket Closed.'
 
@@ -214,7 +214,7 @@ class Node(Api):
 
     @property
     def webSocketUrl(self):
-        if 'APIC-cookie' in self._rootApi()._session.cookies :
+        if 'APIC-cookie' in self._rootApi()._session.cookies:
             token = self._rootApi()._session.cookies['APIC-cookie']
         else:
             raise Exception('APIC-cookie NOT found.. Make sure you have logged in.')
@@ -261,14 +261,14 @@ class Node(Api):
         self._wsStatus = WS_OPENING
         self._wsError  = None
         self._wsReady.wait()
-        if self._wsStatus != WS_OPEN :
+        if self._wsStatus != WS_OPENED:
             if self._wsError is not None:
                 raise Exception(self._wsError)
-            raise Exception('Error occurred when opening Websocket...')
+            raise Exception('Error occurred when opening Websocket')
 
     def _handleWsOpen(self):
         logger.info('Opened WebSocket connection')
-        self._wsStatus = WS_OPEN
+        self._wsStatus = WS_OPENED
         self._wsReady.set()
         self._wsLastRefresh = int(time.time())
 
@@ -749,7 +749,7 @@ class AutoRefreshThread(threading.Thread):
     def _refreshLoginIfNeeded(self):
         now = int(time.time())
         if now + self.REFRESH_BEFORE > self._rootApi._login['nextRefreshBefore']:
-            logger.debug('arThread: Need to refresh Token...')
+            logger.debug('arThread: Need to refresh Token')
             refObj = self._rootApi.methods.LoginRefresh()
             resp = refObj.GET()
             # Process refresh response
@@ -766,9 +766,9 @@ class AutoRefreshThread(threading.Thread):
                     root._login['nextRefreshBefore'] = lastLogin - DELTA + \
                                                            int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
                 else:
-                    logger.error('arThread: response for aaaRefresh does not have required aaaLogin Tag...')
+                    logger.error('arThread: response for aaaRefresh does not have required aaaLogin Tag')
             else:
-                logger.error('arThread: response for aaaRefresh does not have required imdata Tag...')
+                logger.error('arThread: response for aaaRefresh does not have required imdata Tag')
         return
 
     def _refreshSubscriptionsIfNeeded(self):
@@ -789,7 +789,7 @@ class AutoRefreshThread(threading.Thread):
         return
 
     def run(self):
-        logger.debug('arThread: Starting up...')
+        logger.debug('arThread: Starting up')
         while True:
             time.sleep(self.CHECK_INTERVAL)
             if self.isStopped():
@@ -809,7 +809,7 @@ class LoginMethod(Api):
         resp = super(LoginMethod, self).POST(format=format, **kwargs)
 
         if resp is None or resp.status_code != requests.codes.ok:
-            logger.debug('Login failed...')
+            logger.debug('Login failed!')
             return resp
 
         if payloadFormat != 'xml' or resp.text[:5] != '<?xml':
