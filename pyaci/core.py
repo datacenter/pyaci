@@ -44,9 +44,9 @@ logger = logging.getLogger(__name__)
 payloadFormat = 'xml'
 DELTA = 5 # time delta to allow for any variations of clock...
 
-#Web Socket Statuses
-WS_OPENING = 'Websocket Opening...'
-WS_OPEN    = 'Websocket Open.'
+# Web Socket Statuses
+WS_OPENING = 'Websocket Opening.'
+WS_OPEN    = 'Websocket Opened.'
 WS_ERRORED = 'Websocket Errored.'
 WS_CLOSED  = 'Websocket Closed.'
 
@@ -207,7 +207,6 @@ class Node(Api):
         self._autoRefresh = False
         self._autoRefreshThread = None
         self._login = {}
-        self._autotest = False
 
     @property
     def session(self):
@@ -731,9 +730,13 @@ class Mo(Api):
         return self._spawnChildFromRn(className, rn)
 
 
-class autoRefreshThread(threading.Thread):
+class AutoRefreshThread(threading.Thread):
+    REFRESH_BEFORE = 60  # approx - this many seconds before expiry, do token refresh
+    CHECK_INTERVAL = 10  # how long to sleep before waking to check for any work to do
+    WS_REFRESH_INT = 40  # approx - this many seconds before subscription refresh
+
     def __init__(self, rootApi):
-        super(autoRefreshThread, self).__init__()
+        super(AutoRefreshThread, self).__init__()
         self._stop_event = threading.Event()
         self._rootApi = rootApi
 
@@ -743,51 +746,56 @@ class autoRefreshThread(threading.Thread):
     def isStopped(self):
         return self._stop_event.is_set()
 
+    def _refreshLoginIfNeeded(self):
+        now = int(time.time())
+        if now + self.REFRESH_BEFORE > self._rootApi._login['nextRefreshBefore']:
+            logger.debug('arThread: Need to refresh Token...')
+            refObj = self._rootApi.methods.LoginRefresh()
+            resp = refObj.GET()
+            # Process refresh response
+            if payloadFormat != 'xml' or resp.text[:5] != '<?xml':
+                logger.error('XML format of aaaLogin is only supported now')
+                return
+            doc = xmltodict.parse(resp.text)
+            if 'imdata' in doc:
+                if 'aaaLogin' in doc['imdata']:
+                    root = self._rootApi
+                    root._login = {}
+                    lastLogin = int(time.time())
+                    root._login['lastLoginTime'] = lastLogin
+                    root._login['nextRefreshBefore'] = lastLogin - DELTA + \
+                                                           int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
+                else:
+                    logger.error('arThread: response for aaaRefresh does not have required aaaLogin Tag...')
+            else:
+                logger.error('arThread: response for aaaRefresh does not have required imdata Tag...')
+        return
+
+    def _refreshSubscriptionsIfNeeded(self):
+        now = int(time.time())
+        if len(self._rootApi._wsEvents) > 0 and \
+           now >= self._rootApi._wsLastRefresh + self.WS_REFRESH_INT:
+            ids=''
+            for k in self._rootApi._wsEvents:
+                ids+=k+','
+            ids = ids[:-1]
+            logger.debug('Refreshing Ids: %s', ids)
+            wsRefreshObj = self._rootApi.methods.RefreshSubscriptions(ids)
+            resp = wsRefreshObj.GET()
+            if resp.status_code != requests.codes.ok:
+                logger.error('Subscription Refresh Failed !!' + resp.text)
+            else:
+                self._rootApi._wsLastRefresh = now
+        return
+
     def run(self):
         logger.debug('arThread: Starting up...')
-        REFRESH_BEFORE = 60  #approx - this many seconds before expiry, do refresh
-        CHECK_INTERVAL = 10  #how long to sleep before waking to check
-        WS_REFRESH_INT = 40  #approx - this many seconds before subscription refresh
         while True:
-            time.sleep(CHECK_INTERVAL)
+            time.sleep(self.CHECK_INTERVAL)
             if self.isStopped():
                 break
-            # Check if need to refresh
-            now = int(time.time())
-            if now + REFRESH_BEFORE > self._rootApi._login['nextRefreshBefore']:
-                logger.debug('arThread: Need to refresh Token...')
-                refObj = self._rootApi.methods.LoginRefresh()
-                resp = refObj.GET()
-                # Process refresh response
-                if payloadFormat != 'xml' or resp.text[:5] != '<?xml':
-                    logger.error('XML format of aaaLogin is only supported now')
-                    continue
-                doc = xmltodict.parse(resp.text)
-                if 'imdata' in doc:
-                    if 'aaaLogin' in doc['imdata']:
-                        root = self._rootApi
-                        root._login = {}
-                        lastLogin = int(time.time())
-                        root._login['lastLoginTime'] = lastLogin
-                        root._login['nextRefreshBefore'] = lastLogin - DELTA + \
-                                                           int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
-            if len(self._rootApi._wsEvents) > 0 and \
-               now >= self._rootApi._wsLastRefresh + WS_REFRESH_INT:
-                ids=''
-                for k in self._rootApi._wsEvents:
-                    ids+=k+','
-                ids = ids[:-1]
-                logger.debug('Refreshing Ids: %s', ids)
-                wsRefreshObj = self._rootApi.methods.RefreshSubscriptions(ids)
-                resp = wsRefreshObj.GET()
-                logger.debug('Got Response'+str(resp))
-                if resp.status_code != 200:
-                    logger.error('Subscription Refresh Failed !!' + resp.text)
-                else:
-                    self._rootApi._wsLastRefresh = now
-            if self._rootApi._autotest:
-                #If we are running this from the test code - lets do this once only.
-                break
+            self._refreshLoginIfNeeded()
+            self._refreshSubscriptionsIfNeeded()
         logger.debug('arThread: Terminating')
 
 
@@ -800,7 +808,7 @@ class LoginMethod(Api):
     def POST(self, format=None, **kwargs):
         resp = super(LoginMethod, self).POST(format=format, **kwargs)
 
-        if resp is None or resp.status_code != 200:
+        if resp is None or resp.status_code != requests.codes.ok:
             logger.debug('Login failed...')
             return resp
 
@@ -821,7 +829,7 @@ class LoginMethod(Api):
                                                                int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
                 logger.debug(root._login)
                 if root._autoRefresh:
-                    arThread = autoRefreshThread(root)
+                    arThread = AutoRefreshThread(root)
                     root._autoRefreshThread = arThread
                     arThread.daemon = True
                     arThread.start()
@@ -954,7 +962,7 @@ class LogoutMethod(Api):
 
     def POST(self, format=None, **kwargs):
         resp = super(LogoutMethod, self).POST(format=format, **kwargs)
-        if resp.status_code == 200:
+        if resp.status_code == requests.codes.ok:
             self._rootApi()._stopArThread()
 
         return resp
@@ -998,6 +1006,8 @@ class RefreshSubscriptionsMethod(Api):
             args = {'id': sid}
             args.update(kwargs)
             resp = super(RefreshSubscriptionsMethod, self).GET(format=format, **args)
+            if resp.status_code != requests.codes.ok:
+                logger.error('Refresh of subscription id %s failed with status code: %d', sid, resp.status_code)
             # Current Subscription Refresh does one id at a time, so
             # we have to loop here - once it supports multiple ids, then
             # give the entire set of ids

@@ -440,22 +440,25 @@ class AutoRefreshTests(unittest.TestCase):
 <aaaLogin token="700AAAAAAAAAAAAAAAAAAEdiM3Vap8h/9pkqbxgvrOKvPvYW8nkyXIAILMWqdcXSADxXZPE06nsifq+kslkI2UECxR+977d9+yaLtBhK0sz9ugT+id+GFVjh6irHCfIcQDAFeOEYo7u8hxqD84f6iIvGnDzQdZpD4256UkJAZHActeNQzVeDiVS5ldaSEqzAh1Df5IITKKASySUCHi71wg==" siteFingerprint="UAViQctMne4xvtyZ" refreshTimeoutSeconds="600" maximumLifetimeSeconds="86400" guiIdleTimeoutSeconds="1200" restTimeoutSeconds="90" creationTime="1545699898" firstLoginTime="1545699898" userName="admin" remoteUser="false" unixUserId="15374" sessionId="joR4ziDdTeedI1lybx1bjQ==" lastName="" firstName="" changePassword="no" version="4.1(0.90b)" buildTime="Fri Oct 26 16:18:38 PDT 2018" node="topology/pod-1/node-1">
 <aaaUserDomain name="all" readRoleBitmask="0" writeRoleBitmask="1"/>
 </aaaLogin></imdata>'''
-        self.node._login['nextRefreshBefore']=int(time.time()) - 120
         httpretty.register_uri(httpretty.GET,
                                'http://localhost/api/aaaRefresh.xml',
                                body=refresh_xml_body,
                                content_type='application/xml',
                                status=200
                                )
-        self.node._wsEvents={}
-        self.node._wsEvents['123456789']=[]
-        self.node._wsLastRefresh = int(time.time()) - 60
+        self.node._login['nextRefreshBefore']=int(time.time()) - 120
+        self.node._autoRefreshThread._refreshLoginIfNeeded()
+        (httpretty.last_request().method).should.equal('GET')
+        (httpretty.last_request().path).should.equal('/api/aaaRefresh.json')
+
         httpretty.register_uri(httpretty.GET,
                                'http://localhost/api/subscriptionRefresh.xml?id=123456789',
                                body='',
                                status=200)
-        self.node._autotest = True
-        self.node._autoRefreshThread.run()
+        self.node._wsEvents={}
+        self.node._wsEvents['123456789']=[]
+        self.node._wsLastRefresh = int(time.time()) - 60
+        self.node._autoRefreshThread._refreshSubscriptionsIfNeeded()
         (httpretty.last_request().method).should.equal('GET')
         (httpretty.last_request().path).should.equal('/api/subscriptionRefresh.xml?id=123456789')
 
