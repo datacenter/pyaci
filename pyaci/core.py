@@ -27,6 +27,7 @@ import ssl
 import threading
 import websocket
 import xmltodict
+import sys
 import time
 try:
     from urllib.parse import unquote
@@ -162,6 +163,9 @@ class Api(object):
             payload += data
         signature = base64.b64encode(sign(rootApi._x509Key, payload,
                                           'sha256'))
+        if sys.version_info[0] >= 3:
+            signature = signature.decode('ascii')
+
         cookie = ('APIC-Request-Signature={}; '
                   'APIC-Certificate-Algorithm=v1.0; '
                   'APIC-Certificate-Fingerprint=fingerprint; '
