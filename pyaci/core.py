@@ -144,8 +144,10 @@ class Api(object):
         # never use certificate for subscription requests
         if "subscription" not in kwargs:
             self._x509Prep(rootApi, prepped, data)
+        send_kwargs = rootApi._session.merge_environment_settings(
+            prepped.url, proxies={},stream=None, verify=rootApi._verify, cert=None)
         response = rootApi._session.send(
-            prepped, verify=rootApi._verify, timeout=rootApi._timeout)
+            prepped, timeout=rootApi._timeout, **send_kwargs)
 
         logger.debug('<- %d', response.status_code)
         logger.debug('%s', response.text)
