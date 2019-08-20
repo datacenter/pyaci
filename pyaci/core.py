@@ -26,6 +26,9 @@ import requests
 import ssl
 import threading
 import websocket
+import xmltodict
+import sys
+import time
 try:
     from urllib.parse import unquote
 except ImportError:
@@ -40,7 +43,13 @@ from . import options
 
 logger = logging.getLogger(__name__)
 payloadFormat = 'xml'
+DELTA = 5 # time delta to allow for any variations of clock...
 
+# Web Socket Statuses
+WS_OPENING = 'Websocket Opening.'
+WS_OPENED  = 'Websocket Opened.'
+WS_ERRORED = 'Websocket Errored.'
+WS_CLOSED  = 'Websocket Closed.'
 
 def subLogger(name):
     return logging.getLogger('{}.{}'.format(__name__, name))
@@ -104,6 +113,7 @@ class Api(object):
             options = '?'
             for key, value in iteritems(kwargs):
                 options += (key + '=' + value + '&')
+            options = options[:-1]
         else:
             options = ''
 
@@ -155,6 +165,9 @@ class Api(object):
             payload += data
         signature = base64.b64encode(sign(rootApi._x509Key, payload,
                                           'sha256'))
+        if sys.version_info[0] >= 3:
+            signature = signature.decode('ascii')
+
         cookie = ('APIC-Request-Signature={}; '
                   'APIC-Certificate-Algorithm=v1.0; '
                   'APIC-Certificate-Fingerprint=fingerprint; '
@@ -197,6 +210,9 @@ class Node(Api):
         self._wsMos = defaultdict(deque)
         self._wsReady = Event()
         self._wsEvents = {}
+        self._autoRefresh = False
+        self._autoRefreshThread = None
+        self._login = {}
 
     @property
     def session(self):
@@ -204,7 +220,10 @@ class Node(Api):
 
     @property
     def webSocketUrl(self):
-        token = self._rootApi()._session.cookies['APIC-cookie']
+        if 'APIC-cookie' in self._rootApi()._session.cookies:
+            token = self._rootApi()._session.cookies['APIC-cookie']
+        else:
+            raise Exception('APIC-cookie NOT found.. Make sure you have logged in.')
         return '{}/socket{}'.format(
             self._url.replace('https', 'wss').replace('http', 'ws'), token)
 
@@ -245,13 +264,21 @@ class Node(Api):
         wst.daemon = True
         wst.start()
         logger.info('Waiting for the WebSocket connection to open')
+        self._wsStatus = WS_OPENING
+        self._wsError  = None
         self._wsReady.wait()
+        if self._wsStatus != WS_OPENED:
+            if self._wsError is not None:
+                raise Exception(self._wsError)
+            raise Exception('Error occurred when opening Websocket')
 
-    def _handleWsOpen(self, ws):
+    def _handleWsOpen(self):
         logger.info('Opened WebSocket connection')
+        self._wsStatus = WS_OPENED
         self._wsReady.set()
+        self._wsLastRefresh = int(time.time())
 
-    def _handleWsMessage(self, ws, message):
+    def _handleWsMessage(self, message):
         logger.debug('Got a message on WebSocket: %s', message)
         subscriptionIds = []
         if message[:5] == '<?xml':
@@ -268,19 +295,22 @@ class Node(Api):
             if mos:
                 self._wsEvents[subscriptionId].set()
 
-    def _handleWsError(self, ws, error):
+    def _handleWsError(self, error):
         logger.error('Encountered WebSocket error: %s', error)
-        self._wsReady.clear()
+        self._wsStatus = WS_ERRORED
+        self._wsError = error
+        self._wsReady.set()
 
-    def _handleWsClose(self, ws):
+    def _handleWsClose(self):
         logger.info('Closed WebSocket connection')
-        self._wsReady.clear()
+        self._wsStatus = WS_CLOSED
+        self._wsReady.set()
 
-    def waitForWsMo(self, subscriptionId):
+    def waitForWsMo(self, subscriptionId, timeout=None):
         logger.info('Waiting for the WebSocket MOs')
         if subscriptionId not in self._wsEvents:
             self._wsEvents[subscriptionId] = Event()
-        self._wsEvents[subscriptionId].wait()
+        return self._wsEvents[subscriptionId].wait(timeout)
 
     def hasWsMo(self, subscriptionId):
         return len(self._wsMos[subscriptionId]) > 0
@@ -305,6 +335,12 @@ class Node(Api):
 
     def _rootApi(self):
         return self
+
+    def _stopArThread(self):
+        if self._autoRefresh and self._autoRefreshThread is not None:
+            self._autoRefreshThread.stop()
+            self._autoRefreshThread = None
+            self._autoRefresh = False
 
 
 class MoIter(Api):
@@ -700,11 +736,110 @@ class Mo(Api):
         return self._spawnChildFromRn(className, rn)
 
 
+class AutoRefreshThread(threading.Thread):
+    REFRESH_BEFORE = 60  # approx - this many seconds before expiry, do token refresh
+    CHECK_INTERVAL = 10  # how long to sleep before waking to check for any work to do
+    WS_REFRESH_INT = 40  # approx - this many seconds before subscription refresh
+
+    def __init__(self, rootApi):
+        super(AutoRefreshThread, self).__init__()
+        self._stop_event = threading.Event()
+        self._rootApi = rootApi
+
+    def stop(self):
+        self._stop_event.set()
+
+    def isStopped(self):
+        return self._stop_event.is_set()
+
+    def _refreshLoginIfNeeded(self):
+        now = int(time.time())
+        if now + self.REFRESH_BEFORE > self._rootApi._login['nextRefreshBefore']:
+            logger.debug('arThread: Need to refresh Token')
+            refObj = self._rootApi.methods.LoginRefresh()
+            resp = refObj.GET()
+            # Process refresh response
+            if payloadFormat != 'xml' or resp.text[:5] != '<?xml':
+                logger.error('XML format of aaaLogin is only supported now')
+                return
+            doc = xmltodict.parse(resp.text)
+            if 'imdata' in doc:
+                if 'aaaLogin' in doc['imdata']:
+                    root = self._rootApi
+                    root._login = {}
+                    lastLogin = int(time.time())
+                    root._login['lastLoginTime'] = lastLogin
+                    root._login['nextRefreshBefore'] = lastLogin - DELTA + \
+                                                           int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
+                else:
+                    logger.error('arThread: response for aaaRefresh does not have required aaaLogin Tag')
+            else:
+                logger.error('arThread: response for aaaRefresh does not have required imdata Tag')
+        return
+
+    def _refreshSubscriptionsIfNeeded(self):
+        now = int(time.time())
+        if len(self._rootApi._wsEvents) > 0 and \
+           now >= self._rootApi._wsLastRefresh + self.WS_REFRESH_INT:
+            ids=''
+            for k in self._rootApi._wsEvents:
+                ids+=k+','
+            ids = ids[:-1]
+            logger.debug('Refreshing Ids: %s', ids)
+            wsRefreshObj = self._rootApi.methods.RefreshSubscriptions(ids)
+            resp = wsRefreshObj.GET()
+            if resp.status_code != requests.codes.ok:
+                logger.error('Subscription Refresh Failed !!' + resp.text)
+            else:
+                self._rootApi._wsLastRefresh = now
+        return
+
+    def run(self):
+        logger.debug('arThread: Starting up')
+        while True:
+            time.sleep(self.CHECK_INTERVAL)
+            if self.isStopped():
+                break
+            self._refreshLoginIfNeeded()
+            self._refreshSubscriptionsIfNeeded()
+        logger.debug('arThread: Terminating')
+
+
 class LoginMethod(Api):
     def __init__(self, parentApi):
         super(LoginMethod, self).__init__(parentApi=parentApi)
         self._moClassName = 'aaaUser'
         self._properties = {}
+
+    def POST(self, format=None, **kwargs):
+        resp = super(LoginMethod, self).POST(format=format, **kwargs)
+
+        if resp is None or resp.status_code != requests.codes.ok:
+            logger.debug('Login failed!')
+            return resp
+
+        if payloadFormat != 'xml' or resp.text[:5] != '<?xml':
+            logger.error('XML format of aaaLogin is only supported now')
+            return resp
+
+        doc = xmltodict.parse(resp.text)
+        if 'imdata' in doc:
+            if 'aaaLogin' in doc['imdata']:
+                root = self._rootApi()
+                root._login = {}
+                root._login['version'] = doc['imdata']['aaaLogin']['@version']
+                root._login['userName'] = doc['imdata']['aaaLogin']['@userName']
+                lastLogin = int(time.time())
+                root._login['lastLoginTime'] = lastLogin
+                root._login['nextRefreshBefore'] = lastLogin - DELTA + \
+                                                               int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
+                logger.debug(root._login)
+                if root._autoRefresh:
+                    arThread = AutoRefreshThread(root)
+                    root._autoRefreshThread = arThread
+                    arThread.daemon = True
+                    arThread.start()
+        return resp
 
     @property
     def Json(self):
@@ -726,7 +861,7 @@ class LoginMethod(Api):
     def _relativeUrl(self):
         return 'aaaLogin'
 
-    def __call__(self, name, password=None, passwordFile=None):
+    def __call__(self, name, password=None, passwordFile=None, autoRefresh=False):
         if password is None and passwordFile is None:
             password = getpass.getpass('Enter {} password: '.format(name))
         elif password is None:
@@ -734,6 +869,8 @@ class LoginMethod(Api):
                 password = f.read()
         self._properties['name'] = name
         self._properties['pwd'] = password
+        rootApi = self._rootApi()
+        rootApi._autoRefresh = autoRefresh
         return self
 
 
@@ -847,6 +984,83 @@ class ChangeCertMethod(Api):
         self._properties['name'] = certName
         with open(certFile, 'r') as f:
             self._properties['data'] = f.read()
+        return self
+
+
+class LogoutMethod(Api):
+    def __init__(self, parentApi):
+        super(LogoutMethod, self).__init__(parentApi=parentApi)
+        self._moClassName = 'aaaUser'
+        self._properties = {}
+
+    def POST(self, format=None, **kwargs):
+        resp = super(LogoutMethod, self).POST(format=format, **kwargs)
+        if resp.status_code == requests.codes.ok:
+            self._rootApi()._stopArThread()
+
+        return resp
+
+    @property
+    def Json(self):
+        result = {}
+        result[self._moClassName] = {'attributes': self._properties.copy()}
+        return json.dumps(result,
+                          sort_keys=True, indent=2, separators=(',', ': '))
+
+    @property
+    def Xml(self):
+        result = etree.Element(self._moClassName)
+
+        for key, value in self._properties.items():
+            result.set(key, value)
+
+        return _elementToString(result)
+
+    @property
+    def _relativeUrl(self):
+        return 'aaaLogout'
+
+    def __call__(self, user=None):
+        root = self._rootApi()
+        if user is None:
+            self._properties['name'] = root._login['userName']
+        else:
+            self._properties['name'] = user
+        return self
+
+
+class RefreshSubscriptionsMethod(Api):
+    def __init__(self, parentApi):
+        super(RefreshSubscriptionsMethod, self).__init__(parentApi=parentApi)
+
+    def GET(self, format=None, **kwargs):
+        resp = None
+        for sid in self._ids.split(','):
+            args = {'id': sid}
+            args.update(kwargs)
+            resp = super(RefreshSubscriptionsMethod, self).GET(format=format, **args)
+            if resp.status_code != requests.codes.ok:
+                logger.error('Refresh of subscription id %s failed with status code: %d', sid, resp.status_code)
+            # Current Subscription Refresh does one id at a time, so
+            # we have to loop here - once it supports multiple ids, then
+            # give the entire set of ids
+        return resp
+
+    @property
+    def Json(self):
+        return ''
+
+    @property
+    def Xml(self):
+        return ''
+
+    @property
+    def _relativeUrl(self):
+        return 'subscriptionRefresh'
+
+    def __call__(self, ids):
+        ''' ids are comma separate subscription ids '''
+        self._ids = ids
         return self
 
 
@@ -965,8 +1179,12 @@ class MethodApi(Api):
         return LoginRefreshMethod(parentApi=self)
 
     @property
-    def SubscriptionRefresh(self):
-        return SubscriptionRefreshMethod(parentApi=self)
+    def Logout(self):
+        return LogoutMethod(parentApi=self)
+
+    @property
+    def RefreshSubscriptions(self):
+        return RefreshSubscriptionsMethod(parentApi=self)
 
     @property
     def ChangeCert(self):
