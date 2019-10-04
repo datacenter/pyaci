@@ -647,21 +647,21 @@ class MethodsTests(unittest.TestCase):
     @httpretty.activate
     def testMoJsonPOST(self):
         httpretty.register_uri(httpretty.POST,
-                               'http://localhost/api/mo/uni/tn-test.json')
+                               'http://localhost/api/mo/uni.json')
         tenant = self.tree.polUni().fvTenant('test')
         tenant.POST(format='json')
         (httpretty.last_request().method).should.equal('POST')
         (httpretty.last_request().path).should.equal(
-            '/api/mo/uni/tn-test.json'
+            '/api/mo/uni.json'
         )
         (httpretty.last_request().body.decode("utf-8")).should.equal(tenant.Json)
 
     @httpretty.activate
     def testMoXmlPOST(self):
         httpretty.register_uri(httpretty.POST,
-                               'http://localhost/api/mo/uni/tn-test.xml')
+                               'http://localhost/api/mo/uni.xml')
         tenant = self.tree.polUni().fvTenant('test')
         tenant.POST(format='xml')
         (httpretty.last_request().method).should.equal('POST')
-        (httpretty.last_request().path).should.equal('/api/mo/uni/tn-test.xml')
+        (httpretty.last_request().path).should.equal('/api/mo/uni.xml')
         (httpretty.last_request().body.decode('utf8')).should.equal(tenant.Xml)
