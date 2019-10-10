@@ -43,13 +43,14 @@ from . import options
 
 logger = logging.getLogger(__name__)
 payloadFormat = 'xml'
-DELTA = 5 # time delta to allow for any variations of clock...
+DELTA = 5  # time delta to allow for any variations of clock...
 
 # Web Socket Statuses
 WS_OPENING = 'Websocket Opening.'
-WS_OPENED  = 'Websocket Opened.'
+WS_OPENED = 'Websocket Opened.'
 WS_ERRORED = 'Websocket Errored.'
-WS_CLOSED  = 'Websocket Closed.'
+WS_CLOSED = 'Websocket Closed.'
+
 
 def subLogger(name):
     return logging.getLogger('{}.{}'.format(__name__, name))
@@ -145,7 +146,7 @@ class Api(object):
         if "subscription" not in kwargs:
             self._x509Prep(rootApi, prepped, data)
         send_kwargs = rootApi._session.merge_environment_settings(
-            prepped.url, proxies={},stream=None, verify=rootApi._verify, cert=None)
+            prepped.url, proxies={}, stream=None, verify=rootApi._verify, cert=None)
         response = rootApi._session.send(
             prepped, timeout=rootApi._timeout, **send_kwargs)
 
@@ -265,20 +266,20 @@ class Node(Api):
         wst.start()
         logger.info('Waiting for the WebSocket connection to open')
         self._wsStatus = WS_OPENING
-        self._wsError  = None
+        self._wsError = None
         self._wsReady.wait()
         if self._wsStatus != WS_OPENED:
             if self._wsError is not None:
                 raise Exception(self._wsError)
             raise Exception('Error occurred when opening Websocket')
 
-    def _handleWsOpen(self):
+    def _handleWsOpen(self, ws):
         logger.info('Opened WebSocket connection')
         self._wsStatus = WS_OPENED
         self._wsReady.set()
         self._wsLastRefresh = int(time.time())
 
-    def _handleWsMessage(self, message):
+    def _handleWsMessage(self, ws, message):
         logger.debug('Got a message on WebSocket: %s', message)
         subscriptionIds = []
         if message[:5] == '<?xml':
@@ -295,13 +296,13 @@ class Node(Api):
             if mos:
                 self._wsEvents[subscriptionId].set()
 
-    def _handleWsError(self, error):
+    def _handleWsError(self, ws, error):
         logger.error('Encountered WebSocket error: %s', error)
         self._wsStatus = WS_ERRORED
         self._wsError = error
         self._wsReady.set()
 
-    def _handleWsClose(self):
+    def _handleWsClose(self, ws):
         logger.info('Closed WebSocket connection')
         self._wsStatus = WS_CLOSED
         self._wsReady.set()
@@ -770,7 +771,7 @@ class AutoRefreshThread(threading.Thread):
                     lastLogin = int(time.time())
                     root._login['lastLoginTime'] = lastLogin
                     root._login['nextRefreshBefore'] = lastLogin - DELTA + \
-                                                           int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
+                        int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
                 else:
                     logger.error('arThread: response for aaaRefresh does not have required aaaLogin Tag')
             else:
@@ -781,9 +782,9 @@ class AutoRefreshThread(threading.Thread):
         now = int(time.time())
         if len(self._rootApi._wsEvents) > 0 and \
            now >= self._rootApi._wsLastRefresh + self.WS_REFRESH_INT:
-            ids=''
+            ids = ''
             for k in self._rootApi._wsEvents:
-                ids+=k+','
+                ids += k + ','
             ids = ids[:-1]
             logger.debug('Refreshing Ids: %s', ids)
             wsRefreshObj = self._rootApi.methods.RefreshSubscriptions(ids)
@@ -832,7 +833,7 @@ class LoginMethod(Api):
                 lastLogin = int(time.time())
                 root._login['lastLoginTime'] = lastLogin
                 root._login['nextRefreshBefore'] = lastLogin - DELTA + \
-                                                               int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
+                    int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
                 logger.debug(root._login)
                 if root._autoRefresh:
                     arThread = AutoRefreshThread(root)
@@ -952,6 +953,7 @@ class SubscriptionRefreshMethod(Api):
         url = super(SubscriptionRefreshMethod, self)._url(format, **kwargs)
         url += '?id=' + self._properties['id']
         return url
+
 
 class ChangeCertMethod(Api):
     def __init__(self, parentApi):
@@ -1185,6 +1187,10 @@ class MethodApi(Api):
     @property
     def RefreshSubscriptions(self):
         return RefreshSubscriptionsMethod(parentApi=self)
+
+    @property
+    def SubscriptionRefresh(self):
+        return SubscriptionRefreshMethod(parentApi=self)
 
     @property
     def ChangeCert(self):
