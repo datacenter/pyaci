@@ -39,7 +39,6 @@ def testFilter():
 
 def testRspSubtreeInclude():
     opt = pyaci.options.rspSubtreeInclude('relations')
-    opt['rsp-subtree'].should.equal('full')
     opt['rsp-subtree-include'].should.equal('relations')
 
 def testRspSubtreeClass():
