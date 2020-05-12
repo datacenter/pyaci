@@ -1002,6 +1002,36 @@ class LogoutMethod(Api):
         return self
 
 
+
+class CheckRequestState(Api):
+    def __init__(self, parentApi):
+        super(CheckRequestState, self).__init__(parentApi=parentApi)
+    
+    # /api/checkRequestState.xml?id=27866022864027648
+    def GET(self, format=None, **kwargs):
+        args = {'id': self._id}
+        args.update(kwargs)
+        return super(CheckRequestState, self).GET(format=format, **args)
+
+    @property
+    def Json(self):
+        return ''
+
+    @property
+    def Xml(self):
+        return ''
+
+    @property
+    def _relativeUrl(self):
+        return 'checkRequestState'
+
+    def __call__(self, idd):
+        ''' single id '''
+        self._id = idd
+        return self
+
+
+
 class RefreshSubscriptionsMethod(Api):
     def __init__(self, parentApi):
         super(RefreshSubscriptionsMethod, self).__init__(parentApi=parentApi)
@@ -1100,7 +1130,9 @@ class ResolveClassMethod(Api):
             while True:
                 pageOptions = (options.pageSize(str(pageSize)) &
                                options.page(str(currentPage)))
-                newKwargs = dict(pageOptions.items() + kwargs.items())
+                pageOptions.update(kwargs)
+                newKwargs = pageOptions
+
                 logger.debug('Querying page %d', currentPage)
                 response = super(ResolveClassMethod, self).GET(format,
                                                                **newKwargs)
@@ -1150,6 +1182,10 @@ class MethodApi(Api):
     @property
     def LoginRefresh(self):
         return LoginRefreshMethod(parentApi=self)
+
+    @property
+    def CheckRequest(self):
+        return CheckRequestState(parentApi=self)
 
     @property
     def Logout(self):
