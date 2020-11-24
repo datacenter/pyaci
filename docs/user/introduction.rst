@@ -13,13 +13,17 @@ PyACI was designed with the following goals in mind.
 Status
 ------
 
-PyACI is not the official Python bindings for Cisco ACI. It is
-provided as an alternative. For an official Python API, please look at
-Cobra.
+PyACI is the Official Python bindings for Cisco Cloud Application
+Centric Infrastructure (CAPIC). PyACI is also stronly suggested for
+using with Cisco Application Centric Infrastructure (APIC), instead of
+Cobra SDK (still shipping as official Python SDK for APIC).
+With a single installation of PyACI it's possible to program different
+version of APIC and CAPIC just by refering different version of the
+metadata.
 
-PyACI is in a very early stage of specification. The API could change
-in minor ways based on the early adopters' comments. If you are using
-it, please be prepared to adapt your code accordingly.
+PyACI is out since a while, so has a stable set of core APIs.
+New APIs might be added but no plan is there to change the existing
+ones in non-backward compatible fashion.
 
 
 License
