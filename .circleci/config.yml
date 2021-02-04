@@ -25,6 +25,7 @@ jobs:
           command: |
             python -m virtualenv venv
             . venv/bin/activate
+            pip install -U pip
             pip install -e .[doc,test]
 
       - save_cache:
@@ -65,6 +66,7 @@ jobs:
           command: |
             python3 -m venv venv
             . venv/bin/activate
+            pip install -U pip
             pip install -e .[doc,test]
 
       - save_cache:

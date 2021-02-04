@@ -15,6 +15,7 @@ from threading import Event
 from io import BytesIO
 from functools import reduce
 from six import iteritems, iterkeys, itervalues
+from six.moves.urllib.parse import unquote, urlparse
 import base64
 import getpass
 import json
@@ -29,10 +30,6 @@ import websocket
 import xmltodict
 import sys
 import time
-try:
-    from urllib.parse import unquote
-except ImportError:
-    from urllib import unquote
 
 from .errors import (
     MetaError, MoError, ResourceError, RestError, UserError
@@ -879,6 +876,31 @@ class AppLoginMethod(Api):
         super(AppLoginMethod, self).__init__(parentApi=parentApi)
         self._moClassName = "aaaAppToken"
         self._properties = {}
+
+    def POST(self, format=None, **kwargs):
+        resp = super(AppLoginMethod, self).POST(format=format, **kwargs)
+
+        if resp is None or resp.status_code != requests.codes.ok:
+            logger.debug('Login failed!')
+            return resp
+
+        if payloadFormat != 'xml' or resp.text[:5] != '<?xml':
+            logger.error('XML format of AppLogin is only supported now')
+            return resp
+
+        # NOTE (2021-02-03, Praveen Kumar): /api/requestAppToken.xml doesn't set
+        # the token in the cookies automatically. Hence, intercept the response
+        # and set the cookie explicitly.
+        doc = xmltodict.parse(resp.text)
+        if 'imdata' in doc:
+            if 'aaaLogin' in doc['imdata']:
+                token = doc['imdata']['aaaLogin']['@token']
+                domain = urlparse(resp.url).netloc.split(':')[0]
+                self._rootApi().session.cookies.set(
+                    'APIC-cookie', token, domain=domain
+                )
+
+        return resp
 
     @property
     def Json(self):
