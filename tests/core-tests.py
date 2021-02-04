@@ -352,6 +352,62 @@ class LoginTests(unittest.TestCase):
         (httpretty.last_request().body.decode('utf-8')).should.equal(self.login.Xml)
 
 
+class AppLoginTests(unittest.TestCase):
+    def setUp(self):
+        self.login = pyaci.Node('http://localhost').methods.AppLogin(
+            'acme'
+        )
+
+    def testCreation(self):
+        self.login._url().should.equal('http://localhost/api/requestAppToken.xml')
+        et = etree.XML(self.login.Xml)
+        et.tag.should.equal('aaaAppToken')
+        et.attrib['appName'].should.equal('acme')
+        self.login.Json.should.equal(textwrap.dedent('''\
+        {
+          "aaaAppToken": {
+            "attributes": {
+              "appName": "acme"
+            }
+          }
+        }'''))
+
+    @httpretty.activate
+    def testJsonPOST(self):
+        httpretty.register_uri(httpretty.POST,
+                               'http://localhost/api/requestAppToken.json')
+        self.login.POST(format='json')
+        (httpretty.last_request().method).should.equal('POST')
+        (httpretty.last_request().path).should.equal('/api/requestAppToken.json')
+        (httpretty.last_request().body.decode("utf-8")).should.equal(self.login.Json)
+
+    @httpretty.activate
+    def testXmlPOST(self):
+        xml_body = '''<?xml version="1.0" encoding="UTF-8"?><imdata totalCount="1">
+<aaaLogin token="f00AAAAAAAAAAAAAAAAAAK4wjyQODSwoW3hizW066Ts6Gs2S4fkFZf6XhK32II8gZrRrgVGF2Y0pPs05FntrA6LCwXFWicPGpgsUp+SqTJdHZMeQrn45HBxJrmSJKtuYiqCX5Qc5P67Qq+c4w+VDcsHZxXe7KqeUs1TfKlXvvco8CwPOCRWJzMly0ArRsEL6c4t5zQTYpy9XsGwQEWJD/A==" siteFingerprint="UAViQctMne4xvtyZ" refreshTimeoutSeconds="600" maximumLifetimeSeconds="86400" guiIdleTimeoutSeconds="1200" restTimeoutSeconds="90" creationTime="1545696032" firstLoginTime="1545696032" userName="admin" remoteUser="false" unixUserId="15374" sessionId="LlQAR9nARFiVBAJWpwrTBQ==" lastName="" firstName="" changePassword="no" version="4.1(0.90b)" buildTime="Fri Oct 26 16:18:38 PDT 2018" node="topology/pod-1/node-1">
+<aaaUserDomain name="all" rolesR="admin" rolesW="admin">
+<aaaReadRoles/>
+<aaaWriteRoles>
+<role name="admin"/>
+</aaaWriteRoles>
+</aaaUserDomain>
+<DnDomainMapEntry dn="uni/tn-mgmt" readPrivileges="admin" writePrivileges="admin"/>
+<DnDomainMapEntry dn="uni/tn-infra" readPrivileges="admin" writePrivileges="admin"/>
+<DnDomainMapEntry dn="uni/tn-common" readPrivileges="admin" writePrivileges="admin"/>
+</aaaLogin></imdata>'''
+        httpretty.register_uri(httpretty.POST,
+                               'http://localhost/api/requestAppToken.xml',
+                               body=xml_body,
+                               content_type='application/xml',
+                               status=200)
+
+        self.login.POST(format='xml')
+        (httpretty.last_request().method).should.equal('POST')
+        (httpretty.last_request().path).should.equal('/api/requestAppToken.xml')
+        (httpretty.last_request().body.decode('utf-8')).should.equal(self.login.Xml)
+        (self.login._rootApi().session.cookies.get('APIC-cookie').should.equal('f00AAAAAAAAAAAAAAAAAAK4wjyQODSwoW3hizW066Ts6Gs2S4fkFZf6XhK32II8gZrRrgVGF2Y0pPs05FntrA6LCwXFWicPGpgsUp+SqTJdHZMeQrn45HBxJrmSJKtuYiqCX5Qc5P67Qq+c4w+VDcsHZxXe7KqeUs1TfKlXvvco8CwPOCRWJzMly0ArRsEL6c4t5zQTYpy9XsGwQEWJD/A=='))
+
+
 class LogoutTests(unittest.TestCase):
     def setUp(self):
         self.node = pyaci.Node('http://localhost')
