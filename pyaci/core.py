@@ -32,7 +32,8 @@ import time
 try:
     from urllib.parse import unquote, urlparse
 except ImportError:
-    from urllib import unquote, urlparse
+    from urllib import unquote
+    from urlparse import urlparse
 
 from .errors import (
     MetaError, MoError, ResourceError, RestError, UserError
