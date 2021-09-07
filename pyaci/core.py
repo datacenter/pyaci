@@ -75,9 +75,9 @@ else:
 
 
 class Api(object):
-    def __init__(self, parentApi=None, user_proxies=None):
+    def __init__(self, parentApi=None, userProxies=None):
         self._parentApi = parentApi
-        self._user_proxies = user_proxies
+        self._userProxies = userProxies
     def GET(self, format=None, **kwargs):
         return self._performRequest('GET', format=format, **kwargs)
 
@@ -144,8 +144,8 @@ class Api(object):
         send_kwargs = rootApi._session.merge_environment_settings(
             prepped.url, proxies={}, stream=None, verify=rootApi._verify, cert=None)
 
-        if rootApi._user_proxies is not None:
-            send_kwargs["proxies"] = rootApi._user_proxies
+        if rootApi._userProxies is not None:
+            send_kwargs['proxies'] = rootApi._userProxies
         response = rootApi._session.send(
             prepped, timeout=rootApi._timeout, **send_kwargs)
 
@@ -181,8 +181,8 @@ class Api(object):
 
 class Node(Api):
     def __init__(self, url, session=None, verify=False, disableWarnings=True,
-                 timeout=None, aciMetaFilePath=None, user_proxies=None):
-        super(Node, self).__init__(user_proxies=user_proxies)
+                 timeout=None, aciMetaFilePath=None, userProxies=None):
+        super(Node, self).__init__(userProxies=userProxies)
         self._url = url
         if session is not None:
             self._session = session
