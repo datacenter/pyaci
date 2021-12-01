@@ -259,8 +259,21 @@ class Node(Api):
             on_message=self._handleWsMessage,
             on_error=self._handleWsError,
             on_close=self._handleWsClose)
+
+        runForeverKwargs = {"sslopt": {"cert_reqs": ssl.CERT_NONE}}
+        logger.info("URL {} user_proxy {}".format(self.webSocketUrl, self._userProxies))
+        if self._userProxies:
+            try:
+                proxyUrl = self._userProxies.get("https", self._userProxies.get("http", None))
+                if proxyUrl:
+                    runForeverKwargs["http_proxy_host"] = urlparse(proxyUrl).netloc.split(":")[0]
+                    runForeverKwargs["http_proxy_port"] = int(urlparse(proxyUrl).netloc.split(":")[1])
+                    runForeverKwargs["proxy_type"] = "http"
+            except ValueError:
+                logger.info("http(s) proxy unavailable for {}".format(self.webSocketUrl))
         wst = threading.Thread(target=lambda: ws.run_forever(
-            sslopt={"cert_reqs": ssl.CERT_NONE}))
+            **runForeverKwargs))
+
         wst.daemon = True
         wst.start()
         logger.info('Waiting for the WebSocket connection to open')
