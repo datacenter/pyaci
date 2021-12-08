@@ -61,20 +61,14 @@ def _elementToString(e):
 
 aciMetaDir = os.path.expanduser(os.environ.get('ACI_META_DIR', '~/.aci-meta'))
 
-# The the folder does not exist: initialize the aciClassMetas as an empty dict
-if not os.path.exists(aciMetaDir):
-    aciClassMetas = dict()
+aciMetaFile = os.path.join(aciMetaDir, 'aci-meta.json')
+if os.path.exists(aciMetaFile):
+    with open(aciMetaFile, 'rb') as f:
+        logger.debug('Loading meta information from %s', aciMetaFile)
+        aciMeta = json.load(f)
+        aciClassMetas = aciMeta['classes']
 else:
-    aciMetaFile = os.path.join(aciMetaDir, 'aci-meta.json')
-    # If the folder and the file are present load the aciClassMetas
-    if os.path.exists(aciMetaFile):
-        with open(aciMetaFile, 'rb') as f:
-            logger.debug('Loading meta information from %s', aciMetaFile)
-            aciMeta = json.load(f)
-            aciClassMetas = aciMeta['classes']
-    # The the folder exist but there is no aci-meta.json file: initialize the aciClassMetas as an empty dict
-    else:
-        aciClassMetas = dict()
+    aciClassMetas = dict()
 
 class Api(object):
     def __init__(self, parentApi=None, userProxies=None):
