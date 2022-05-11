@@ -8,7 +8,7 @@ This module contains helpers to construct REST API filters for PyACI.
 """
 
 
-class Filter(object):
+class Filter:
     def __invert__(self):
         return Not(self)
 
@@ -27,7 +27,7 @@ class UnaryFilter(Filter):
         self._value = value
 
     def __str__(self):
-        return '{}({})'.format(self._operator, self._value)
+        return f'{self._operator}({self._value})'
 
 
 class Not(UnaryFilter):
@@ -57,10 +57,10 @@ class BinaryFilter(Filter):
 
     def __str__(self):
         if isinstance(self._right, str):
-            right = '"{}"'.format(self._right)
+            right = f'"{self._right}"'
         else:
             right = self._right
-        return '{}({},{})'.format(self._operator, self._left, right)
+        return f'{self._operator}({self._left},{right})'
 
 
 class Eq(BinaryFilter):
@@ -110,8 +110,7 @@ class TernaryFilter(Filter):
         self._right = right
 
     def __str__(self):
-        return '{}({},"{}","{}")'.format(
-            self._operator, self._left, self._middle, self._right)
+        return f'{self._operator}({self._left},"{self._middle}","{self._right}")'
 
 
 class Bw(TernaryFilter):

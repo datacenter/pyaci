@@ -15,6 +15,7 @@ __license__ = 'Apache 2.0'
 __copyright__ = 'Copyright (c) 2015 Cisco Systems, Inc. All rights reserved.'
 
 
-from .core import Node
-import pyaci.options
 import pyaci.filters
+import pyaci.options
+
+from .core import Node

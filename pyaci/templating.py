@@ -7,14 +7,15 @@ pyaci.templating
 This module contains helpers to use Jinja2 templates with PyACI.
 """
 
-import jinja2
 import os
+
+import jinja2
 import yaml
 
 from .errors import ResourceError
 
 
-def mergeDict(master, other):
+def merge_dict(master, other):
     """Merge the given two dictionaries recursively and return the
     result."""
     if isinstance(master, dict) and isinstance(other, dict):
@@ -23,13 +24,13 @@ def mergeDict(master, other):
                 if key not in master:
                     master[key] = value
                 else:
-                    master[key] = mergeDict(master[key], value)
+                    master[key] = merge_dict(master[key], value)
             else:
                 master[key] = value
     return master
 
 
-class TemplateRepository(object):
+class TemplateRepository:
     """A Jinja2 template repository.
 
     :param path: path to a directory containing Jinja2 templates.
@@ -37,7 +38,7 @@ class TemplateRepository(object):
     Usage::
 
       >>> import pyaci
-      >>> repo = pyaci.TemplateRepository('path/to/repo')
+      >>> repo = pyaci.template_repository('path/to/repo')
       >>> xml1 = repo.render('template1.xml', template_values={'count': 2})
       >>> xml2 = repo.render('template2.xml',
                               template_values_file='values2.yml')
@@ -46,16 +47,14 @@ class TemplateRepository(object):
                                template_values={'name': 'bar'})
 
     """
+
     def __init__(self, path):
         if not os.path.isdir(path):
-            raise ResourceError('Path is not valid: {}'.format(path))
+            raise ResourceError(f'Path is not valid: {path}')
         self._path = path
-        self._jinja2_env = jinja2.Environment(
-            loader=jinja2.FileSystemLoader(self._path)
-        )
+        self._jinja2_env = jinja2.Environment(loader=jinja2.FileSystemLoader(self._path))
 
-    def render(self, template_path,
-               template_values_file=None, template_values={}):
+    def render(self, template_path, template_values_file=None, template_values={}):
         """Render a given template.
 
         Template values can be specified using a YAML file, or a
@@ -69,12 +68,10 @@ class TemplateRepository(object):
 
         """
         if template_values_file is not None:
-            values = yaml.load(
-                self._jinja2_env.get_template(template_values_file).render()
-            )
+            values = yaml.load(self._jinja2_env.get_template(template_values_file).render())
         else:
             values = {}
 
-        values = mergeDict(values, template_values)
+        values = merge_dict(values, template_values)
 
         return self._jinja2_env.get_template(template_path).render(values)

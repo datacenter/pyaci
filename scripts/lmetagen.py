@@ -1,21 +1,29 @@
 #!/usr/bin/env python
 
 import copy
-import os
 import json
+import os
 
 
 def main():
-    aciMetaDir = os.path.expanduser(os.environ.get('ACI_META_DIR',
-                                                   '~/.aci-meta'))
+    aciMetaDir = os.path.expanduser(os.environ.get('ACI_META_DIR', '~/.aci-meta'))
     aciMetaFile = os.path.join(aciMetaDir, 'aci-meta.json')
     with open(aciMetaFile, 'rb') as f:
         aciMeta = json.load(f)
         aciClassMetas = aciMeta['classes']
 
     limitedClasses = {
-        'topRoot', 'polUni', 'fvTenant', 'fvCtx', 'fvBD', 'fvRsCtx',
-        'fvAp', 'fvAEPg', 'fvRsBd', 'fvEpPCont', 'fvEpP'
+        'topRoot',
+        'polUni',
+        'fvTenant',
+        'fvCtx',
+        'fvBD',
+        'fvRsCtx',
+        'fvAp',
+        'fvAEPg',
+        'fvRsBd',
+        'fvEpPCont',
+        'fvEpP',
     }
     limitedClassMetas = {}
     for className in aciClassMetas:
@@ -38,8 +46,8 @@ def main():
     limitedMeta['classes'] = limitedClassMetas
 
     with open('aci-meta.json', 'w') as out:
-        json.dump(limitedMeta, out,
-                  sort_keys=True, indent=2, separators=(',', ': '))
+        json.dump(limitedMeta, out, sort_keys=True, indent=2, separators=(',', ': '))
+
 
 if __name__ == '__main__':
     main()

@@ -109,11 +109,11 @@ properties as keyword arguments.
     >>> tenant = uni.fvTenant('demo')
     >>> print tenant.Xml
     <fvTenant name="demo"/>
-    
+
     >>> tenant = uni.fvTenant(name='demo')
     >>> print tenant.Xml
     <fvTenant name="demo"/>
-    
+
     >>> tenant = uni.fvTenant('demo', descr='Demo tenant')
     >>> print tenant.Xml
     <fvTenant name="demo" descr="Demo tenant"/>

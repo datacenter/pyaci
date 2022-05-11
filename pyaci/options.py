@@ -8,93 +8,92 @@ This module contains helpers to construct REST API options for PyACI.
 """
 
 
-class ApiOptions(dict):
+class api_options(dict):
     """Dict like data structure capturing REST API options."""
 
     def __and__(self, other):
-        return ApiOptions(self, **other)
+        return api_options(self, **other)
 
 
 """Query immediate children."""
-children = ApiOptions([('query-target', 'children')])
+children = api_options([('query-target', 'children')])
 
 """Query the entire subtree."""
-subtree = ApiOptions([('query-target', 'subtree')])
+subtree = api_options([('query-target', 'subtree')])
 
 
-def rspSubtreeInclude(level):
+def rsp_subtree_include(level):
     """Query additional contained objects along in the response e.g. relations, stats, faults"""
-    return ApiOptions([('rsp-subtree-include', level)])
+    return api_options([('rsp-subtree-include', level)])
 
 
-def rspSubtreeClass(className):
+def rsp_subtree_class(className):
     """Query specific"""
-    return (ApiOptions([('rsp-subtree', 'full')]) &
-            ApiOptions([('rsp-subtree-class', className)]))
+    return api_options([('rsp-subtree', 'full')]) & api_options([('rsp-subtree-class', className)])
 
 
-def rspPropInclude(propType):
+def rsp_prop_include(propType):
     """Query ."""
-    return ApiOptions([('rsp-prop-include', propType)])
+    return api_options([('rsp-prop-include', propType)])
 
 
 """Query the object with all the children."""
-rspSubtreeChildren = ApiOptions([('rsp-subtree', 'children')])
+rsp_subtree_children = api_options([('rsp-subtree', 'children')])
 
 """Query the object with the entire subtree."""
-rspSubtreeFull = ApiOptions([('rsp-subtree', 'full')])
+rsp_subtree_full = api_options([('rsp-subtree', 'full')])
 
 """Include all the faults along with the entire subtree."""
-faults = ApiOptions([('rsp-subtree-include', 'faults,no-scoped')])
+faults = api_options([('rsp-subtree-include', 'faults,no-scoped')])
 
 """Query audit logs."""
-auditLogs = ApiOptions([('rsp-subtree-include', 'audit-logs,no-scoped')])
+audit_logs = api_options([('rsp-subtree-include', 'audit-logs,no-scoped')])
 
 """Get count."""
-count = ApiOptions([('rsp-subtree-include', 'count')])
+count = api_options([('rsp-subtree-include', 'count')])
 
 """Subscribe to WebSocket notifications."""
-subscribe = ApiOptions([('subscription', 'yes')])
+subscribe = api_options([('subscription', 'yes')])
 
 
-def subtreeClass(className):
+def subtree_class(className):
     """Query subtree class."""
-    return (ApiOptions([('query-target', 'subtree')]) &
-            ApiOptions([('target-subtree-class', className)]))
+    return api_options([('query-target', 'subtree')]) & api_options([('target-subtree-class', className)])
 
 
-def childClass(className):
+def child_class(className):
     """Query child class."""
-    return (ApiOptions([('query-target', 'children')]) &
-            ApiOptions([('target-subtree-class', className)]))
+    return api_options([('query-target', 'children')]) & api_options([('target-subtree-class', className)])
 
 
-def orderBy(property):
+def order_by(property):
     """Order the query result by the given property."""
-    return ApiOptions([('order-by', property)])
+    return api_options([('order-by', property)])
 
 
 def page(value):
     """Results from only the given page."""
-    return ApiOptions([('page', value)])
+    return api_options([('page', value)])
 
 
-def pageSize(value):
+def page_size(value):
     """Number of objects per page."""
-    return ApiOptions([('page-size', value)])
+    return api_options([('page-size', value)])
 
 
 """Subscribe to queries."""
-subscribe = ApiOptions([('subscription', 'yes')])
+subscribe = api_options([('subscription', 'yes')])
 
 
 def filter(filt):
     """Restrict to the specified filter"""
-    return ApiOptions([('query-target-filter', str(filt))])
+    return api_options([('query-target-filter', str(filt))])
 
 
-def subtreeFilter(filt):
+def subtree_filter(filt):
     """Restrict to the specified filter"""
-    return (ApiOptions([('rsp-subtree-filter', str(filt))]) &
-            ApiOptions([('rsp-subtree-include', 'required')]) &
-            ApiOptions([('rsp-subtree', 'full')]))
+    return (
+        api_options([('rsp-subtree-filter', str(filt))])
+        & api_options([('rsp-subtree-include', 'required')])
+        & api_options([('rsp-subtree', 'full')])
+    )

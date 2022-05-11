@@ -141,7 +141,7 @@ table.query input[type="text"]
     padding:5px;
 }
 
-table.query input[type="text"]:focus { 
+table.query input[type="text"]:focus {
     outline:none;
     border-color:#505050;
     box-shadow:0 0 10px #9ecaed;

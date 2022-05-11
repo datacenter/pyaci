@@ -1,37 +1,30 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
-from scp import SCPClient
 import argparse
+import errno
 import getpass
 import inspect
 import os
+
 import paramiko
-import errno
+from scp import SCPClient
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description='Generate pyaci meta from APIC')
+    parser = argparse.ArgumentParser(description='Generate pyaci meta from APIC')
 
-    parser.add_argument('host', nargs=1,
-                        help='hostname of APIC')
-    parser.add_argument('-P', '--port', type=int, default=22,
-                        help='SSH port of APIC')
+    parser.add_argument('host', nargs=1, help='hostname of APIC')
+    parser.add_argument('-P', '--port', type=int, default=22, help='SSH port of APIC')
 
-    parser.add_argument('-u', '--user', type=str, default='admin',
-                        help='authentication username')
-    parser.add_argument('-p', '--password', type=str,
-                        help='authentication password')
+    parser.add_argument('-u', '--user', type=str, default='admin', help='authentication username')
+    parser.add_argument('-p', '--password', type=str, help='authentication password')
 
-    parser.add_argument('-d', '--default', action='store_true',
-                        help='set as default meta')
+    parser.add_argument('-d', '--default', action='store_true', help='set as default meta')
 
     args = parser.parse_args()
 
     if args.password is None:
-        args.password = getpass.getpass('Enter {} password for {}: '.format(
-            args.user, args.host[0]))
+        args.password = getpass.getpass(f'Enter {args.user} password for {args.host[0]}: ')
 
     return args
 
@@ -41,9 +34,14 @@ def main():
 
     ssh = paramiko.SSHClient()
     ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-    ssh.connect(args.host[0], port=args.port, username=args.user,
-                password=args.password, allow_agent=False,
-                look_for_keys=False)
+    ssh.connect(
+        args.host[0],
+        port=args.port,
+        username=args.user,
+        password=args.password,
+        allow_agent=False,
+        look_for_keys=False,
+    )
     stdin, stdout, stderr = ssh.exec_command('acidiag version')
     version = ''.join(stdout.readlines()).strip()
     vlist = version.split('.')
@@ -64,22 +62,20 @@ def main():
 
     # Create ~/.aci-meta if it does not exist.
     aci_meta_dir = '~/.aci-meta'
-    destination_dir = os.path.expanduser('{}'.format(aci_meta_dir))
+    destination_dir = os.path.expanduser(f'{aci_meta_dir}')
     try:
         os.makedirs(destination_dir)
     except OSError as e:
         if e.errno != errno.EEXIST:
             raise
 
-    destination = os.path.expanduser(
-        '{}/aci-meta.{}.json'.format(aci_meta_dir, version))
+    destination = os.path.expanduser(f'{aci_meta_dir}/aci-meta.{version}.json')
     print('Copying generated meta from APIC to', destination)
     scp.get('aci-meta.json', destination)
 
-    default = os.path.expanduser('{}/aci-meta.json'.format(aci_meta_dir))
+    default = os.path.expanduser(f'{aci_meta_dir}/aci-meta.json')
     if not os.path.isfile(default):
-        print('No default meta exist. '
-              'Setting the current meta as the default.')
+        print('No default meta exist. ' 'Setting the current meta as the default.')
         should_link = True
     else:
         if args.default:

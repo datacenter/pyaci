@@ -1,5 +1,3 @@
-# Copyright (c) 2014, 2015 Cisco Systems, Inc. All rights reserved.
-
 """
 pyaci.core
 ~~~~~~~~~~~~~~~~~~~
@@ -7,143 +5,140 @@ pyaci.core
 This module contains the core classes of PyACI.
 """
 
-from OpenSSL.crypto import FILETYPE_PEM, load_privatekey, sign
-from collections import OrderedDict, defaultdict, deque
-from lxml import etree
-from requests import Request
-from threading import Event
-from io import BytesIO
-from functools import reduce
-from six import iteritems, iterkeys, itervalues
-from six.moves.urllib.parse import unquote, urlparse
 import base64
 import getpass
-import json
+import json as json_module
 import logging
 import operator
 import os
+import ssl
+import sys
+import threading
+import time
+from collections import OrderedDict, defaultdict, deque
+from functools import reduce
+from io import BytesIO
+from threading import Event
+
 import parse
 import requests
-import ssl
-import threading
 import websocket
 import xmltodict
-import sys
-import time
+from lxml import etree
+from OpenSSL.crypto import FILETYPE_PEM, load_privatekey, sign
+from requests import Request
+from six.moves.urllib.parse import unquote, urlparse
 
-from .errors import (
-    MetaError, MoError, ResourceError, RestError, UserError
-)
-from .utils import splitIntoRns
 from . import options
-
+from .errors import MetaError, MoError, ResourceError, RestError, UserError
+from .utils import split_into_rns
 
 logger = logging.getLogger(__name__)
-payloadFormat = 'xml'
-DELTA = 5 # time delta to allow for any variations of clock...
+payload_format = 'xml'
+DELTA = 5  # time delta to allow for any variations of clock...
 
 # Web Socket Statuses
 WS_OPENING = 'Websocket Opening.'
-WS_OPENED  = 'Websocket Opened.'
+WS_OPENED = 'Websocket Opened.'
 WS_ERRORED = 'Websocket Errored.'
-WS_CLOSED  = 'Websocket Closed.'
-
-def subLogger(name):
-    return logging.getLogger('{}.{}'.format(__name__, name))
+WS_CLOSED = 'Websocket Closed.'
 
 
-def _elementToString(e):
+def sub_logger(name):
+    return logging.getLogger(f'{__name__}.{name}')
+
+
+def _element_to_string(e):
     return etree.tostring(e, pretty_print=True, encoding='unicode')
 
 
-# TODO (2015-05-07, Praveen Kumar): Research a way to automatically
-# load this by discovering the version from the node.
-
+# TODO: Jonas - Dynamic fetch
 aciMetaDir = os.path.expanduser(os.environ.get('ACI_META_DIR', '~/.aci-meta'))
+
 
 aciMetaFile = os.path.join(aciMetaDir, 'aci-meta.json')
 if os.path.exists(aciMetaFile):
     with open(aciMetaFile, 'rb') as f:
         logger.debug('Loading meta information from %s', aciMetaFile)
-        aciMeta = json.load(f)
-        aciClassMetas = aciMeta['classes']
+        aciMeta = json_module.load(f)
+        aci_class_metas = aciMeta['classes']
 else:
-    aciClassMetas = dict()
+    aci_class_metas = dict()
 
-class Api(object):
-    def __init__(self, parentApi=None, userProxies=None):
-        self._parentApi = parentApi
-        self._userProxies = userProxies
-    def GET(self, format=None, **kwargs):
-        return self._performRequest('GET', format=format, **kwargs)
 
-    def DELETE(self, format=None):
-        return self._performRequest('DELETE', format=format)
+class Api:
+    def __init__(self, parent_api=None, user_proxies=None):
+        self._parent_api = parent_api
+        self._user_proxies = user_proxies
 
-    def POST(self, format=None, **kwargs):
-        return self._performRequest(
-            'POST', format=format, needData=True, **kwargs)
+    def get(self, format=None, **kwargs):
+        return self._perform_request('get', format=format, **kwargs)
+
+    def delete(self, format=None):
+        return self._perform_request('delete', format=format)
+
+    def post(self, format=None, **kwargs):
+        return self._perform_request('post', format=format, need_data=True, **kwargs)
 
     def _url(self, format=None, **kwargs):
         if format is None:
-            format = payloadFormat
+            format = payload_format
 
         def loop(entity, accumulator):
             if entity is None:
                 return accumulator
             else:
                 if accumulator:
-                    relativeUrl = entity._relativeUrl
-                    if relativeUrl:
-                        passDown = entity._relativeUrl + '/' + accumulator
+                    relative_url = entity._relative_url
+                    if relative_url:
+                        pass_down = entity._relative_url + '/' + accumulator
                     else:
-                        passDown = accumulator
+                        pass_down = accumulator
                 else:
-                    passDown = entity._relativeUrl
-                return loop(entity._parentApi, passDown)
+                    pass_down = entity._relative_url
+                return loop(entity._parent_api, pass_down)
 
         if kwargs:
             options = '?'
-            for key, value in iteritems(kwargs):
-                options += (key + '=' + value + '&')
+            for key, value in kwargs.items():
+                options += key + '=' + value + '&'
             options = options[:-1]
         else:
             options = ''
 
         return loop(self, '') + '.' + format + options
 
-    def _performRequest(self, method, format=None, needData=False, **kwargs):
+    def _perform_request(self, method, format=None, need_data=False, **kwargs):
         if format is None:
-            format = payloadFormat
-
-        logger = subLogger(method)
-        rootApi = self._rootApi()
+            format = payload_format
+        logger = sub_logger(method)
+        root_api = self._root_api()
         url = self._url(format, **kwargs)
 
-        if needData:
+        if need_data:
             if format == 'json':
-                data = self.Json
+                data = self.json
             elif format == 'xml':
-                data = self.Xml
+                data = self.xml
         else:
             data = None
 
         logger.debug('-> %s %s', method, url)
-        if needData:
+        if need_data:
             logger.debug('%s', data)
 
-        req = Request(method, url, data=data)
-        prepped = rootApi._session.prepare_request(req)
+        req = Request(method.upper(), url, data=data)
+        prepped = root_api._session.prepare_request(req)
         # never use certificate for subscription requests
-        if "subscription" not in kwargs:
-            self._x509Prep(rootApi, prepped, data)
-        send_kwargs = rootApi._session.merge_environment_settings(
-            prepped.url, proxies={}, stream=None, verify=rootApi._verify, cert=None)
+        if 'subscription' not in kwargs:
+            self._x509Prep(root_api, prepped, data)
+        send_kwargs = root_api._session.merge_environment_settings(
+            prepped.url, proxies={}, stream=None, verify=root_api._verify, cert=None
+        )
 
-        if rootApi._userProxies is not None:
-            send_kwargs['proxies'] = rootApi._userProxies
-        response = rootApi._session.send(
-            prepped, timeout=rootApi._timeout, **send_kwargs)
+        if root_api._user_proxies is not None:
+            send_kwargs['proxies'] = root_api._user_proxies
+        response = root_api._session.send(prepped, timeout=root_api._timeout, **send_kwargs)
 
         logger.debug('<- %d', response.status_code)
         logger.debug('%s', response.text)
@@ -152,62 +147,69 @@ class Api(object):
             raise RestError(response.text)
         return response
 
-    def _x509Prep(self, rootApi, req, data):
-        if rootApi._x509Key is None:
+    def _x509Prep(self, root_api, req, data):
+        if root_api._x509Key is None:
             return
-        payload = '{}{}'.format(req.method, req.url.replace(rootApi._url, ''))
+        payload = '{}{}'.format(req.method, req.url.replace(root_api._url, ''))
         payload = unquote(payload)
         if data is not None:
             payload += data
-        signature = base64.b64encode(sign(rootApi._x509Key, payload,
-                                          'sha256'))
+        signature = base64.b64encode(sign(root_api._x509Key, payload, 'sha256'))
         if sys.version_info[0] >= 3:
             signature = signature.decode('ascii')
 
-        cookie = ('APIC-Request-Signature={}; '
-                  'APIC-Certificate-Algorithm=v1.0; '
-                  'APIC-Certificate-Fingerprint=fingerprint; '
-                  'APIC-Certificate-DN={}').format(
-                      signature, rootApi._x509Dn)
+        cookie = (
+            'APIC-Request-Signature={}; '
+            'APIC-Certificate-Algorithm=v1.0; '
+            'APIC-Certificate-Fingerprint=fingerprint; '
+            'APIC-Certificate-DN={}'
+        ).format(signature, root_api._x509Dn)
         req.headers['Cookie'] = cookie
 
-    def _rootApi(self):
-        return self._parentApi._rootApi()
+    def _root_api(self):
+        return self._parent_api._root_api()
 
 
 class Node(Api):
-    def __init__(self, url, session=None, verify=False, disableWarnings=True,
-                 timeout=None, aciMetaFilePath=None, userProxies=None):
-        super(Node, self).__init__(userProxies=userProxies)
+    def __init__(
+        self,
+        url,
+        session=None,
+        verify=False,
+        disable_arnings=True,
+        timeout=None,
+        aci_meta_file_path=None,
+        user_proxies=None,
+    ):
+        super().__init__(user_proxies=user_proxies)
         self._url = url
         if session is not None:
             self._session = session
         else:
             self._session = requests.session()
 
-        if aciMetaFilePath is not None:
-            with open(aciMetaFilePath, 'rb') as f:
-                logger.debug('Loading meta information from %s',
-                             aciMetaFilePath)
-                aciMetaContents = json.load(f)
-                self._aciClassMetas = aciMetaContents['classes']
+        if aci_meta_file_path is not None:
+            with open(aci_meta_file_path, 'rb') as f:
+                logger.debug('Loading meta information from %s', aci_meta_file_path)
+                aci_meta_contents = json_module.load(f)
+                self._aci_class_metas = aci_meta_contents['classes']
         else:
-            if not aciClassMetas:
+            if not aci_class_metas:
                 raise MetaError('ACI meta was not specified !')
             else:
-                self._aciClassMetas = aciClassMetas
+                self._aci_class_metas = aci_class_metas
 
         self._timeout = timeout
         self._verify = verify
-        if disableWarnings:
+        if disable_arnings:
             requests.packages.urllib3.disable_warnings()
-        self._apiUrlComponent = 'api'
+        self._api_url_component = 'api'
         self._x509Key = None
-        self._wsMos = defaultdict(deque)
-        self._wsReady = Event()
-        self._wsEvents = {}
-        self._autoRefresh = False
-        self._autoRefreshThread = None
+        self._ws_mos = defaultdict(deque)
+        self._ws_ready = Event()
+        self._ws_events = {}
+        self._auto_refresh = False
+        self._auto_refresh_thread = None
         self._login = {}
 
     @property
@@ -215,189 +217,176 @@ class Node(Api):
         return self._session
 
     @property
-    def webSocketUrl(self):
-        if 'APIC-cookie' in self._rootApi()._session.cookies:
-            token = self._rootApi()._session.cookies['APIC-cookie']
+    def web_socket_url(self):
+        if 'APIC-cookie' in self._root_api()._session.cookies:
+            token = self._root_api()._session.cookies['APIC-cookie']
         else:
             raise Exception('APIC-cookie NOT found.. Make sure you have logged in.')
-        return '{}/socket{}'.format(
-            self._url.replace('https', 'wss').replace('http', 'ws'), token)
+        return '{}/socket{}'.format(self._url.replace('https', 'wss').replace('http', 'ws'), token)
 
     def useX509CertAuth(self, userName, certName, keyFile, appcenter=False):
-        with open(keyFile, 'r') as f:
+        with open(keyFile) as f:
             key = f.read()
         if appcenter:
-            self._x509Dn = (self.mit.polUni().aaaUserEp().
-                            aaaAppUser(userName).aaaUserCert(certName).Dn)
+            self._x509Dn = self.mit.polUni().aaaUserEp().aaaAppUser(userName).aaaUserCert(certName).dn
         else:
-            self._x509Dn = (self.mit.polUni().aaaUserEp().
-                            aaaUser(userName).aaaUserCert(certName).Dn)
+            self._x509Dn = self.mit.polUni().aaaUserEp().aaaUser(userName).aaaUserCert(certName).dn
         self._x509Key = load_privatekey(FILETYPE_PEM, key)
 
-    def toggleTestApi(self, shouldEnable, dme='policymgr'):
-        if shouldEnable:
-            self._apiUrlComponent = 'testapi/{}'.format(dme)
+    def toggle_test_api(self, should_enable, dme='policymgr'):
+        if should_enable:
+            self._api_url_component = f'testapi/{dme}'
         else:
-            self._apiUrlComponent = 'api'
+            self._api_url_component = 'api'
 
-    def toggleDebugApi(self, shouldEnable, dme='policymgr'):
-        if shouldEnable:
-            self._apiUrlComponent = 'debugapi/{}'.format(dme)
+    def toggle_debug_api(self, should_enable, dme='policymgr'):
+        if should_enable:
+            self._api_url_component = f'debugapi/{dme}'
         else:
-            self._apiUrlComponent = 'api'
+            self._api_url_component = 'api'
 
-    def startWsListener(self):
-        logger.info('Establishing WebSocket connection to %s',
-                    self.webSocketUrl)
+    def start_ws_listener(self):
+        logger.info('Establishing WebSocket connection to %s', self.web_socket_url)
         ws = websocket.WebSocketApp(
-            self.webSocketUrl,
-            on_open=self._handleWsOpen,
-            on_message=self._handleWsMessage,
-            on_error=self._handleWsError,
-            on_close=self._handleWsClose)
+            self.web_socket_url,
+            on_open=self._handle_ws_open,
+            on_message=self._handle_ws_message,
+            on_error=self._handle_ws_error,
+            on_close=self._handle_ws_close,
+        )
 
-        runForeverKwargs = {"sslopt": {"cert_reqs": ssl.CERT_NONE}}
-        logger.info("URL {} user_proxy {}".format(self.webSocketUrl, self._userProxies))
-        if self._userProxies:
+        run_forever_kwargs = {'sslopt': {'cert_reqs': ssl.CERT_NONE}}
+        logger.info(f'URL {self.web_socket_url} user_proxy {self._user_proxies}')
+        if self._user_proxies:
             try:
-                proxyUrl = self._userProxies.get("https", self._userProxies.get("http", None))
+                proxyUrl = self._user_proxies.get('https', self._user_proxies.get('http', None))
                 if proxyUrl:
-                    runForeverKwargs["http_proxy_host"] = urlparse(proxyUrl).netloc.split(":")[0]
-                    runForeverKwargs["http_proxy_port"] = int(urlparse(proxyUrl).netloc.split(":")[1])
-                    runForeverKwargs["proxy_type"] = "http"
+                    run_forever_kwargs['http_proxy_host'] = urlparse(proxyUrl).netloc.split(':')[0]
+                    run_forever_kwargs['http_proxy_port'] = int(urlparse(proxyUrl).netloc.split(':')[1])
+                    run_forever_kwargs['proxy_type'] = 'http'
             except ValueError:
-                logger.info("http(s) proxy unavailable for {}".format(self.webSocketUrl))
-        wst = threading.Thread(target=lambda: ws.run_forever(
-            **runForeverKwargs))
+                logger.info(f'http(s) proxy unavailable for {self.web_socket_url}')
+        wst = threading.Thread(target=lambda: ws.run_forever(**run_forever_kwargs))
 
         wst.daemon = True
         wst.start()
         logger.info('Waiting for the WebSocket connection to open')
-        self._wsStatus = WS_OPENING
-        self._wsError  = None
-        self._wsReady.wait()
-        if self._wsStatus != WS_OPENED:
-            if self._wsError is not None:
-                raise Exception(self._wsError)
+        self._ws_status = WS_OPENING
+        self._ws_error = None
+        self._ws_ready.wait()
+        if self._ws_status != WS_OPENED:
+            if self._ws_error is not None:
+                raise Exception(self._ws_error)
             raise Exception('Error occurred when opening Websocket')
 
-    def _handleWsOpen(self):
+    def _handle_ws_open(self):
         logger.info('Opened WebSocket connection')
-        self._wsStatus = WS_OPENED
-        self._wsReady.set()
-        self._wsLastRefresh = int(time.time())
+        self._ws_status = WS_OPENED
+        self._ws_ready.set()
+        self._ws_last_refresh = int(time.time())
 
-    def _handleWsMessage(self, message):
+    def _handle_ws_message(self, message):
         logger.debug('Got a message on WebSocket: %s', message)
-        subscriptionIds = []
+        subscription_ids = []
         if message[:5] == '<?xml':
-            mos = self.mit.ParseXmlResponse(
-                message, subscriptionIds=subscriptionIds)
+            mos = self.mit.parse_xml_response(message, subscription_ids=subscription_ids)
         else:
-            mos = self.mit.ParseJsonResponse(
-                message, subscriptionIds=subscriptionIds)
-        for subscriptionId in subscriptionIds:
+            mos = self.mit.parse_json_response(message, subscription_ids=subscription_ids)
+        for subscriptionId in subscription_ids:
             for mo in mos:
-                self._wsMos[subscriptionId].append(mo)
-            if subscriptionId not in self._wsEvents:
-                self._wsEvents[subscriptionId] = Event()
+                self._ws_mos[subscriptionId].append(mo)
+            if subscriptionId not in self._ws_events:
+                self._ws_events[subscriptionId] = Event()
             if mos:
-                self._wsEvents[subscriptionId].set()
+                self._ws_events[subscriptionId].set()
 
-    def _handleWsError(self, error):
+    def _handle_ws_error(self, error):
         logger.error('Encountered WebSocket error: %s', error)
-        self._wsStatus = WS_ERRORED
-        self._wsError = error
-        self._wsReady.set()
+        self._ws_status = WS_ERRORED
+        self._ws_error = error
+        self._ws_ready.set()
 
-    def _handleWsClose(self):
+    def _handle_ws_close(self):
         logger.info('Closed WebSocket connection')
-        self._wsStatus = WS_CLOSED
-        self._wsReady.set()
+        self._ws_status = WS_CLOSED
+        self._ws_ready.set()
 
-    def waitForWsMo(self, subscriptionId, timeout=None):
+    def wait_for_ws_mo(self, subscriptionId, timeout=None):
         logger.info('Waiting for the WebSocket MOs')
-        if subscriptionId not in self._wsEvents:
-            self._wsEvents[subscriptionId] = Event()
-        return self._wsEvents[subscriptionId].wait(timeout)
+        if subscriptionId not in self._ws_events:
+            self._ws_events[subscriptionId] = Event()
+        return self._ws_events[subscriptionId].wait(timeout)
 
-    def hasWsMo(self, subscriptionId):
-        return len(self._wsMos[subscriptionId]) > 0
+    def has_ws_mo(self, subscriptionId):
+        return len(self._ws_mos[subscriptionId]) > 0
 
-    def popWsMo(self, subscriptionId):
-        mo = self._wsMos[subscriptionId].popleft()
-        if not self.hasWsMo(subscriptionId):
-            self._wsEvents[subscriptionId].clear()
+    def pop_ws_mo(self, subscriptionId):
+        mo = self._ws_mos[subscriptionId].popleft()
+        if not self.has_ws_mo(subscriptionId):
+            self._ws_events[subscriptionId].clear()
         return mo
 
     @property
     def mit(self):
-        return Mo(self, 'topRoot', self._aciClassMetas)
+        return Mo(self, 'topRoot', self._aci_class_metas)
 
     @property
     def methods(self):
         return MethodApi(self)
 
     @property
-    def _relativeUrl(self):
-        return self._url + '/' + self._apiUrlComponent
+    def _relative_url(self):
+        return self._url + '/' + self._api_url_component
 
-    def _rootApi(self):
+    def _root_api(self):
         return self
 
-    def _stopArThread(self):
-        if self._autoRefresh and self._autoRefreshThread is not None:
-            self._autoRefreshThread.stop()
-            self._autoRefreshThread = None
-            self._autoRefresh = False
+    def _stop_ar_thread(self):
+        if self._auto_refresh and self._auto_refresh_thread is not None:
+            self._auto_refresh_thread.stop()
+            self._auto_refresh_thread = None
+            self._auto_refresh = False
 
 
 class MoIter(Api):
-    def __init__(self, parentApi, className, objects, aciClassMetas):
-        self._parentApi = parentApi
-        self._className = className
+    def __init__(self, parent_api, class_name, objects, aci_class_metas):
+        self._parent_api = parent_api
+        self._class_name = class_name
         self._objects = objects
-        self._aciClassMetas = aciClassMetas
-        self._aciClassMeta = aciClassMetas[self._className]
-        self._rnFormat = self._aciClassMeta['rnFormat']
-        self._iter = itervalues(self._objects)
+        self._aci_class_metas = aci_class_metas
+        self._aci_class_meta = aci_class_metas[self._class_name]
+        self._rn_format = self._aci_class_meta['rnFormat']
+        self._iter = self._objects.values()
 
     def __call__(self, *args, **kwargs):
-        identifiedBy = self._aciClassMeta['identifiedBy']
-        if (len(args) >= 1):
-            if len(args) != len(identifiedBy):
+        identified_by = self._aci_class_meta['identifiedBy']
+        if len(args) >= 1:
+            if len(args) != len(identified_by):
                 raise MoError(
                     'Class `{}` requires {} naming properties, '
-                    'but only {} were provided'.format(
-                        self._className, len(identifiedBy), len(args)
-                    )
+                    'but only {} were provided'.format(self._class_name, len(identified_by), len(args))
                 )
-            identifierDict = dict(zip(identifiedBy, args))
+            identifier_dict = dict(zip(identified_by, args))
         else:
-            for name in identifiedBy:
+            for name in identified_by:
                 if name not in kwargs:
-                    raise MoError(
-                        'Missing naming property `{}` for class `{}`'.format(
-                            name, self._className
-                        ))
-            identifierDict = kwargs
+                    raise MoError(f'Missing naming property `{name}` for class `{self._class_name}`')
+            identifier_dict = kwargs
 
-        rn = self._rnFormat.format(**identifierDict)
-        mo = self._parentApi._getChildByRn(rn)
+        rn = self._rn_format.format(**identifier_dict)
+        mo = self._parent_api._get_child_by_rn(rn)
 
         if mo is None:
-            if self._parentApi.TopRoot._readOnlyTree:
-                raise MoError(
-                    'Mo with DN {} does not contain a child with RN {}'
-                    .format(self._parentApi.Dn, rn))
+            if self._parent_api.top_root._read_only_tree:
+                raise MoError(f'Mo with DN {self._parent_api.dn} does not contain a child with RN {rn}')
 
-            mo = Mo(self._parentApi, self._className, self._aciClassMetas)
-            for name in identifiedBy:
-                setattr(mo, name, identifierDict[name])
-            self._parentApi._addChild(self._className, rn, mo)
+            mo = Mo(self._parent_api, self._class_name, self._aci_class_metas)
+            for name in identified_by:
+                setattr(mo, name, identifier_dict[name])
+            self._parent_api._add_child(self._class_name, rn, mo)
             self._objects[rn] = mo
 
-        for attribute in set(kwargs) - set(identifiedBy):
+        for attribute in set(kwargs) - set(identified_by):
             setattr(mo, attribute, kwargs[attribute])
 
         return mo
@@ -413,123 +402,113 @@ class MoIter(Api):
 
 
 class Mo(Api):
-    def __init__(self, parentApi, className, aciClassMetas):
-        super(Mo, self).__init__(parentApi=parentApi)
+    def __init__(self, parent_api, class_name, aci_class_metas):
+        super().__init__(parent_api=parent_api)
 
-        self._className = className
-        self._aciClassMetas = aciClassMetas
-        self._aciClassMeta = aciClassMetas[self._className]
-        self._properties = {
-            x[0]: None
-            for x in self._aciClassMeta['properties'].items()
-        }
-        self._rnFormat = self._aciClassMeta['rnFormat']
+        self._class_name = class_name
+        self._aci_class_metas = aci_class_metas
+        self._aci_class_meta = aci_class_metas[self._class_name]
+        self._properties = {x[0]: None for x in self._aci_class_meta['properties'].items()}
+        self._rn_format = self._aci_class_meta['rnFormat']
 
         self._children = OrderedDict()
-        self._childrenByClass = defaultdict(OrderedDict)
-        self._readOnlyTree = False
+        self._children_by_class = defaultdict(OrderedDict)
+        self._read_only_tree = False
 
-    def FromDn(self, dn):
-        def reductionF(acc, rn):
-            dashAt = rn.find('-')
-            rnPrefix = rn if dashAt == -1 else rn[:dashAt] + '-'
-            className = acc._aciClassMeta['rnMap'][rnPrefix]
-            return acc._spawnChildFromRn(className, rn)
+    def from_dn(self, dn):
+        def reduction_f(acc, rn):
+            dash_at = rn.find('-')
+            rn_prefix = rn if dash_at == -1 else rn[:dash_at] + '-'
+            class_name = acc._aci_class_meta['rnMap'][rn_prefix]
+            return acc._spawn_child_from_rn(class_name, rn)
 
-        return reduce(reductionF, splitIntoRns(dn), self)
+        return reduce(reduction_f, split_into_rns(dn), self)
 
     @property
-    def TopRoot(self):
-        if self._isTopRoot():
+    def top_root(self):
+        if self._is_top_root():
             return self
         else:
-            return self._parentApi.TopRoot
+            return self._parent_api.top_root
 
     @property
-    def ReadOnlyTree(self):
-        return self.TopRoot._readOnlyTree
+    def read_only_tree(self):
+        return self.top_root._read_only_tree
 
-    @ReadOnlyTree.setter
-    def ReadOnlyTree(self, value):
-        self.TopRoot._readOnlyTree = value
-
-    @property
-    def ClassName(self):
-        return self._className
+    @read_only_tree.setter
+    def read_only_tree(self, value):
+        self.top_root._read_only_tree = value
 
     @property
-    def Rn(self):
-        idDict = {
-            k: v
-            for k, v in self._properties.items()
-            if k in self._aciClassMeta['identifiedBy']
-        }
-        return self._rnFormat.format(**idDict)
+    def class_name(self):
+        return self._class_name
 
     @property
-    def Dn(self):
-        if self._parentApi._isTopRoot():
-            return self.Rn
+    def rn(self):
+        id_dict = {k: v for k, v in self._properties.items() if k in self._aci_class_meta['identifiedBy']}
+        return self._rn_format.format(**id_dict)
+
+    @property
+    def dn(self):
+        if self._parent_api._is_top_root():
+            return self.rn
         else:
-            return self._parentApi.Dn + '/' + self.Rn
+            return self._parent_api.dn + '/' + self.rn
 
     @property
-    def Parent(self):
-        if isinstance(self._parentApi, Mo):
-            return self._parentApi
+    def parent(self):
+        if isinstance(self._parent_api, Mo):
+            return self._parent_api
         else:
             return None
 
-    def Up(self, level=1):
+    def up(self, level=1):
         result = self
         for i in range(level):
-            if result.Parent is None:
-                raise MoError('Reached topRoot after {} levels'.format(i))
-            result = result.Parent
+            if result.parent is None:
+                raise MoError(f'Reached top_root after {i} levels')
+            result = result.parent
         return result
 
     @property
-    def Children(self):
-        return itervalues(self._children)
+    def children(self):
+        return self._children.values()
 
     @property
-    def Status(self):
+    def status(self):
         return self._properties['status']
 
-    @Status.setter
-    def Status(self, value):
+    @status.setter
+    def status(self, value):
         self._properties['status'] = value
 
     @property
-    def PropertyNames(self):
+    def property_names(self):
         return sorted(self._properties.keys())
 
     @property
-    def NonEmptyPropertyNames(self):
-        return sorted([k for k, v in self._properties.items()
-                       if v is not None])
+    def non_empty_property_names(self):
+        return sorted(k for k, v in self._properties.items() if v is not None)
 
     @property
-    def IsConfigurable(self):
-        return self._aciClassMeta['isConfigurable']
+    def is_configurable(self):
+        return self._aci_class_meta['isConfigurable']
 
-    def IsConfigurableProperty(self, name):
-        return (name in self._aciClassMeta['properties'] and
-                self._aciClassMeta['properties'][name]['isConfigurable'])
-
-    @property
-    def Json(self):
-        return json.dumps(self._dataDict(),
-                          sort_keys=True, indent=2, separators=(',', ': '))
-
-    @Json.setter
-    def Json(self, value):
-        self._fromObjectDict(json.loads(value))
+    def is_configurable_property(self, name):
+        return name in self._aci_class_meta['properties'] and self._aci_class_meta['properties'][name]['isConfigurable']
 
     @property
-    def Xml(self):
+    def json(self):
+        return json_module.dumps(self._data_dict(), sort_keys=True, indent=2, separators=(',', ': '))
+
+    @json.setter
+    def json(self, value):
+        self._from_object_dict(json_module.loads(value))
+
+    @property
+    def xml(self):
         def element(mo):
-            result = etree.Element(mo._className)
+            result = etree.Element(mo._class_name)
 
             for key, value in mo._properties.items():
                 if value is not None:
@@ -540,153 +519,139 @@ class Mo(Api):
 
             return result
 
-        return _elementToString(element(self))
+        return _element_to_string(element(self))
 
-    def GetXml(self, elementPredicate=lambda mo: True,
-               propertyPredicate=lambda mo, name: True):
-        def element(mo, elementPredicate, propertyPredicate):
-            if not elementPredicate(mo):
+    def get_xml(self, element_predicate=lambda mo: True, property_predicate=lambda mo, name: True):
+        def element(mo, element_predicate, property_predicate):
+            if not element_predicate(mo):
                 return None
 
-            result = etree.Element(mo._className)
+            result = etree.Element(mo._class_name)
 
             for key, value in mo._properties.items():
                 if value is not None:
-                    if propertyPredicate(mo, key):
+                    if property_predicate(mo, key):
                         result.set(key, value)
 
             for child in mo._children.values():
-                childElement = element(child, elementPredicate,
-                                       propertyPredicate)
-                if childElement is not None:
-                    result.append(childElement)
+                child_element = element(child, element_predicate, property_predicate)
+                if child_element is not None:
+                    result.append(child_element)
 
             return result
 
-        return _elementToString(
-            element(self, elementPredicate, propertyPredicate))
+        return _element_to_string(element(self, element_predicate, property_predicate))
 
-    @Xml.setter
-    def Xml(self, value):
+    @xml.setter
+    def xml(self, value):
         xml = bytes(bytearray(value, encoding='utf-8'))
-        self._fromXmlElement(etree.fromstring(xml))
+        self._from_xml_element(etree.fromstring(xml))
 
-    def ParseXmlResponse(self, xml, localOnly=False, subscriptionIds=[]):
+    def parse_xml_response(self, xml, local_only=False, subscription_ids=[]):
         # https://gist.github.com/karlcow/3258330
         xml = bytes(bytearray(xml, encoding='utf-8'))
-        context = etree.iterparse(BytesIO(xml),
-                                  events=('end',), tag='imdata')
+        context = etree.iterparse(BytesIO(xml), events=('end',), tag='imdata')
         mos = []
         event, root = next(context)
         sIds = root.get('subscriptionId', '')
         if sIds:
-            subscriptionIds.extend([str(x) for x in sIds.split(',')])
+            subscription_ids.extend([str(x) for x in sIds.split(',')])
         for element in root.iterchildren():
             if 'dn' not in element.attrib:
-                raise MoError('Property `dn` not found in element {}'.format(
-                    _elementToString(element)))
+                raise MoError(f'Property `dn` not found in element {_element_to_string(element)}')
             if element.tag == 'moCount':
                 mo = self.moCount()
             else:
-                mo = self.FromDn(element.attrib['dn'])
-            mo._fromXmlElement(element, localOnly=localOnly)
+                mo = self.from_dn(element.attrib['dn'])
+            mo._from_xml_element(element, local_only=local_only)
             element.clear()
             mos.append(mo)
         return mos
 
-    def ParseJsonResponse(self, text, subscriptionIds=[]):
-        response = json.loads(text)
-        sIds = response.get('subscriptionId', [])
-        if sIds:
-            subscriptionIds.extend(sIds)
+    def parse_json_response(self, text, subscription_ids=[]):
+        response = json_module.loads(text)
+        s_ids = response.get('subscriptionId', [])
+        if s_ids:
+            subscription_ids.extend(s_ids)
         mos = []
         for element in response['imdata']:
-            name, value = next(iteritems(element))
+            name, value = next(iter(element.items()))
             if 'dn' not in value['attributes']:
-                raise MoError('Property `dn` not found in dict {}'.format(
-                    value['attributes']))
-            mo = self.FromDn(value['attributes']['dn'])
-            mo._fromObjectDict(element)
+                raise MoError('Property `dn` not found in dict {}'.format(value['attributes']))
+            mo = self.from_dn(value['attributes']['dn'])
+            mo._from_object_dict(element)
             mos.append(mo)
         return mos
 
-    def GET(self, format=None, **kwargs):
+    def get(self, format=None, **kwargs):
         if format is None:
-            format = payloadFormat
+            format = payload_format
 
-        topRoot = self.TopRoot
+        top_root = self.top_root
 
-        subscriptionIds = []
-        response = super(Mo, self).GET(format, **kwargs)
+        subscription_ids = []
+        response = super().get(format, **kwargs)
         if format == 'json':
-            result = topRoot.ParseJsonResponse(response.text,
-                                               subscriptionIds=subscriptionIds)
+            result = top_root.parse_json_response(response.text, subscription_ids=subscription_ids)
         elif format == 'xml':
-            result = topRoot.ParseXmlResponse(response.text,
-                                              subscriptionIds=subscriptionIds)
+            result = top_root.parse_xml_response(response.text, subscription_ids=subscription_ids)
 
-        topRoot.ReadOnlyTree = True
-        if subscriptionIds:
-            return result, subscriptionIds[0]
+        top_root.read_only_tree = True
+        if subscription_ids:
+            return result, subscription_ids[0]
         else:
             return result
 
     @property
-    def _relativeUrl(self):
-        if self._className == 'topRoot':
+    def _relative_url(self):
+        if self._class_name == 'topRoot':
             return 'mo'
         else:
-            return self.Rn
+            return self.rn
 
-    def _fromObjectDict(self, objectDict):
-        attributes = objectDict[self._className].get('attributes', {})
+    def _from_object_dict(self, object_dict):
+        attributes = object_dict[self._class_name].get('attributes', {})
 
         for key, value in attributes.items():
             self._properties[key] = value
 
-        children = objectDict[self._className].get('children', [])
+        children = object_dict[self._class_name].get('children', [])
         for cdict in children:
-            className = next(iterkeys(cdict))
-            attributes = next(itervalues(cdict)).get('attributes', {})
-            child = self._spawnChildFromAttributes(className, **attributes)
-            child._fromObjectDict(cdict)
+            class_name = next(iter(cdict.keys()))
+            attributes = next(iter(cdict.values())).get('attributes', {})
+            child = self._spawn_child_from_attributes(class_name, **attributes)
+            child._from_object_dict(cdict)
 
-    def _fromXmlElement(self, element, localOnly=False):
-        if element.tag != self._className:
-            raise MoError(
-                'Root element tag `{}` does not match with class `{}`'
-                .format(element.tag, self._className))
+    def _from_xml_element(self, element, local_only=False):
+        if element.tag != self._class_name:
+            raise MoError(f'Root element tag `{element.tag}` does not match with class `{self._class_name}`')
 
-        if localOnly and element.attrib.get('lcOwn', 'local') != 'local':
+        if local_only and element.attrib.get('lcOwn', 'local') != 'local':
             return
 
         for key, value in element.attrib.items():
             self._properties[key] = value
 
         for celement in element.iterchildren('*'):
-            className = celement.tag
+            class_name = celement.tag
             attributes = celement.attrib
-            child = self._spawnChildFromAttributes(className, **attributes)
-            child._fromXmlElement(celement, localOnly=localOnly)
+            child = self._spawn_child_from_attributes(class_name, **attributes)
+            child._from_xml_element(celement, local_only=local_only)
 
-    def _dataDict(self):
+    def _data_dict(self):
         data = {}
-        objectData = {}
-        data[self._className] = objectData
+        object_data = {}
+        data[self._class_name] = object_data
 
-        attributes = {
-            k: v
-            for k, v in self._properties.items()
-            if v is not None
-        }
+        attributes = {k: v for k, v in self._properties.items() if v is not None}
         if attributes:
-            objectData['attributes'] = attributes
+            object_data['attributes'] = attributes
 
         if self._children:
-            objectData['children'] = []
+            object_data['children'] = []
 
         for child in self._children.values():
-            objectData['children'].append(child._dataDict())
+            object_data['children'].append(child._data_dict())
 
         return data
 
@@ -694,55 +659,52 @@ class Mo(Api):
         if name in self._properties:
             return self._properties[name]
 
-        if name in self._aciClassMeta['contains']:
-            return MoIter(self, name, self._childrenByClass[name],
-                          aciClassMetas=self._aciClassMetas)
+        if name in self._aci_class_meta['contains']:
+            return MoIter(
+                self,
+                name,
+                self._children_by_class[name],
+                aci_class_metas=self._aci_class_metas,
+            )
 
-        raise AttributeError('{} is not a valid attribute for class {}'.
-                             format(name, self.ClassName))
+        raise AttributeError(f'{name} is not a valid attribute for class {self.class_name}')
 
     def __setattr__(self, name, value):
         if '_properties' in self.__dict__ and name in self._properties:
             self._properties[name] = value
         else:
-            super(Mo, self).__setattr__(name, value)
+            super().__setattr__(name, value)
 
-    def _isTopRoot(self):
-        return self._className == 'topRoot'
+    def _is_top_root(self):
+        return self._class_name == 'topRoot'
 
-    def _getChildByRn(self, rn):
+    def _get_child_by_rn(self, rn):
         return self._children.get(rn, None)
 
-    def _addChild(self, className, rn, child):
+    def _add_child(self, class_name, rn, child):
         self._children[rn] = child
-        self._childrenByClass[className][rn] = child
+        self._children_by_class[class_name][rn] = child
 
-    def _spawnChildFromRn(self, className, rn):
+    def _spawn_child_from_rn(self, class_name, rn):
         # TODO: Refactor.
-        moIter = getattr(self, className)
-        parsed = parse.parse(moIter._rnFormat, rn)
+        mo_iter = getattr(self, class_name)
+        parsed = parse.parse(mo_iter._rn_format, rn)
         if parsed is None:
-            logging.debug('RN parsing failed, RN: {}, format: {}'.
-                          format(rn, moIter._rnFormat))
+            logging.debug(f'RN parsing failed, RN: {rn}, format: {mo_iter._rn_format}')
             # FIXME (2015-04-08, Praveen Kumar): Hack alert!
             rn = rn.replace('[]', '[None]')
             if rn.endswith('-'):
-                rn = rn + 'None'
-            parsed = parse.parse(moIter._rnFormat, rn)
-        identifierDict = parsed.named
-        orderedIdentifiers = [
-            t[0] for t in sorted(parsed.spans.items(),
-                                 key=operator.itemgetter(1))
-        ]
-        identifierArgs = [
-            identifierDict[name] for name in orderedIdentifiers
-        ]
-        return moIter(*identifierArgs)
+                rn = f'{rn}None'
+            parsed = parse.parse(mo_iter._rn_format, rn)
+        identifier_dict = parsed.named
+        ordered_identifiers = [t[0] for t in sorted(parsed.spans.items(), key=operator.itemgetter(1))]
+        identifier_args = [identifier_dict[name] for name in ordered_identifiers]
+        return mo_iter(*identifier_args)
 
-    def _spawnChildFromAttributes(self, className, **attributes):
-        rnFormat = self._aciClassMetas[className]['rnFormat']
-        rn = rnFormat.format(**attributes)
-        return self._spawnChildFromRn(className, rn)
+    def _spawn_child_from_attributes(self, class_name, **attributes):
+        rn_format = self._aci_class_metas[class_name]['rnFormat']
+        rn = rn_format.format(**attributes)
+        return self._spawn_child_from_rn(class_name, rn)
 
 
 class AutoRefreshThread(threading.Thread):
@@ -750,154 +712,154 @@ class AutoRefreshThread(threading.Thread):
     CHECK_INTERVAL = 10  # how long to sleep before waking to check for any work to do
     WS_REFRESH_INT = 40  # approx - this many seconds before subscription refresh
 
-    def __init__(self, rootApi):
-        super(AutoRefreshThread, self).__init__()
+    def __init__(self, root_api):
+        super().__init__()
         self._stop_event = threading.Event()
-        self._rootApi = rootApi
+        self._root_api = root_api
 
     def stop(self):
         self._stop_event.set()
 
-    def isStopped(self):
+    def is_stopped(self):
         return self._stop_event.is_set()
 
-    def _refreshLoginIfNeeded(self):
+    def _refresh_login_if_needed(self):
         now = int(time.time())
-        if now + self.REFRESH_BEFORE > self._rootApi._login['nextRefreshBefore']:
-            logger.debug('arThread: Need to refresh Token')
-            refObj = self._rootApi.methods.LoginRefresh()
-            resp = refObj.GET()
+        if now + self.REFRESH_BEFORE > self._root_api._login['next_refresh_before']:
+            logger.debug('ar_thread: Need to refresh Token')
+            ref_obj = self._root_api.methods.login_refresh()
+            resp = ref_obj.get()
             # Process refresh response
-            if payloadFormat != 'xml' or resp.text[:5] != '<?xml':
+            if payload_format != 'xml' or resp.text[:5] != '<?xml':
                 logger.error('XML format of aaaLogin is only supported now')
                 return
             doc = xmltodict.parse(resp.text)
             if 'imdata' in doc:
                 if 'aaaLogin' in doc['imdata']:
-                    root = self._rootApi
+                    root = self._root_api
                     root._login = {}
-                    lastLogin = int(time.time())
-                    root._login['lastLoginTime'] = lastLogin
-                    root._login['nextRefreshBefore'] = lastLogin - DELTA + \
-                                                           int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
+                    last_login = int(time.time())
+                    root._login['last_login_time'] = last_login
+                    root._login['next_refresh_before'] = (
+                        last_login - DELTA + int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
+                    )
                 else:
-                    logger.error('arThread: response for aaaRefresh does not have required aaaLogin Tag')
+                    logger.error('ar_thread: response for aaaRefresh does not have required aaaLogin Tag')
             else:
-                logger.error('arThread: response for aaaRefresh does not have required imdata Tag')
+                logger.error('ar_thread: response for aaaRefresh does not have required imdata Tag')
         return
 
-    def _refreshSubscriptionsIfNeeded(self):
+    def _refresh_subscriptions_if_needed(self):
         now = int(time.time())
-        if len(self._rootApi._wsEvents) > 0 and \
-           now >= self._rootApi._wsLastRefresh + self.WS_REFRESH_INT:
-            ids=''
-            for k in self._rootApi._wsEvents:
-                ids+=k+','
+        if len(self._root_api._ws_events) > 0 and now >= self._root_api._ws_last_refresh + self.WS_REFRESH_INT:
+            ids = ''
+            for k in self._root_api._ws_events:
+                ids += k + ','
             ids = ids[:-1]
             logger.debug('Refreshing Ids: %s', ids)
-            wsRefreshObj = self._rootApi.methods.RefreshSubscriptions(ids)
-            resp = wsRefreshObj.GET()
+            ws_refresh_obj = self._root_api.methods.refresh_subscriptions(ids)
+            resp = ws_refresh_obj.get()
             if resp.status_code != requests.codes.ok:
                 logger.error('Subscription Refresh Failed !!' + resp.text)
             else:
-                self._rootApi._wsLastRefresh = now
+                self._root_api._ws_last_refresh = now
         return
 
     def run(self):
-        logger.debug('arThread: Starting up')
+        logger.debug('ar_thread: Starting up')
         while True:
             time.sleep(self.CHECK_INTERVAL)
-            if self.isStopped():
+            if self.is_stopped():
                 break
-            self._refreshLoginIfNeeded()
-            self._refreshSubscriptionsIfNeeded()
-        logger.debug('arThread: Terminating')
+            self._refresh_login_if_needed()
+            self._refresh_subscriptions_if_needed()
+        logger.debug('ar_thread: Terminating')
 
 
 class LoginMethod(Api):
-    def __init__(self, parentApi):
-        super(LoginMethod, self).__init__(parentApi=parentApi)
-        self._moClassName = 'aaaUser'
+    def __init__(self, parent_api):
+        super().__init__(parent_api=parent_api)
+        self._mo_class_name = 'aaaUser'
         self._properties = {}
 
-    def POST(self, format=None, **kwargs):
-        resp = super(LoginMethod, self).POST(format=format, **kwargs)
+    def post(self, format=None, **kwargs):
+        resp = super().post(format=format, **kwargs)
 
         if resp is None or resp.status_code != requests.codes.ok:
-            logger.debug('Login failed!')
+            logger.debug('login failed!')
             return resp
 
-        if payloadFormat != 'xml' or resp.text[:5] != '<?xml':
+        if payload_format != 'xml' or resp.text[:5] != '<?xml':
             logger.error('XML format of aaaLogin is only supported now')
             return resp
 
         doc = xmltodict.parse(resp.text)
         if 'imdata' in doc:
             if 'aaaLogin' in doc['imdata']:
-                root = self._rootApi()
+                root = self._root_api()
                 root._login = {}
                 root._login['version'] = doc['imdata']['aaaLogin']['@version']
-                root._login['userName'] = doc['imdata']['aaaLogin']['@userName']
+                root._login['user_name'] = doc['imdata']['aaaLogin']['@userName']
                 lastLogin = int(time.time())
-                root._login['lastLoginTime'] = lastLogin
-                root._login['nextRefreshBefore'] = lastLogin - DELTA + \
-                                                               int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
+                root._login['last_login_time'] = lastLogin
+                root._login['next_refresh_before'] = (
+                    lastLogin - DELTA + int(doc['imdata']['aaaLogin']['@refreshTimeoutSeconds'])
+                )
                 logger.debug(root._login)
-                if root._autoRefresh:
-                    arThread = AutoRefreshThread(root)
-                    root._autoRefreshThread = arThread
-                    arThread.daemon = True
-                    arThread.start()
+                if root._auto_refresh:
+                    ar_thread = AutoRefreshThread(root)
+                    root._auto_refresh_thread = ar_thread
+                    ar_thread.daemon = True
+                    ar_thread.start()
         return resp
 
     @property
-    def Json(self):
+    def json(self):
         result = {}
-        result[self._moClassName] = {'attributes': self._properties.copy()}
-        return json.dumps(result,
-                          sort_keys=True, indent=2, separators=(',', ': '))
+        result[self._mo_class_name] = {'attributes': self._properties.copy()}
+        return json_module.dumps(result, sort_keys=True, indent=2, separators=(',', ': '))
 
     @property
-    def Xml(self):
-        result = etree.Element(self._moClassName)
+    def xml(self):
+        result = etree.Element(self._mo_class_name)
 
         for key, value in self._properties.items():
             result.set(key, value)
 
-        return _elementToString(result)
+        return _element_to_string(result)
 
     @property
-    def _relativeUrl(self):
+    def _relative_url(self):
         return 'aaaLogin'
 
-    def __call__(self, name, password=None, passwordFile=None, autoRefresh=False):
-        if password is None and passwordFile is None:
-            password = getpass.getpass('Enter {} password: '.format(name))
+    def __call__(self, name, password=None, password_file=None, auto_refresh=False):
+        if password is None and password_file is None:
+            password = getpass.getpass(f'Enter {name} password: ')
         elif password is None:
-            with open(passwordFile, 'r') as f:
+            with open(password_file) as f:
                 password = f.read()
         self._properties['name'] = name
         self._properties['pwd'] = password
-        rootApi = self._rootApi()
-        rootApi._autoRefresh = autoRefresh
+        root_api = self._root_api()
+        root_api._auto_refresh = auto_refresh
         return self
 
 
 class AppLoginMethod(Api):
-    def __init__(self, parentApi):
-        super(AppLoginMethod, self).__init__(parentApi=parentApi)
-        self._moClassName = "aaaAppToken"
+    def __init__(self, parent_api):
+        super().__init__(parent_api=parent_api)
+        self._mo_class_name = 'aaaAppToken'
         self._properties = {}
 
-    def POST(self, format=None, **kwargs):
-        resp = super(AppLoginMethod, self).POST(format=format, **kwargs)
+    def post(self, format=None, **kwargs):
+        resp = super().post(format=format, **kwargs)
 
         if resp is None or resp.status_code != requests.codes.ok:
-            logger.debug('Login failed!')
+            logger.debug('login failed!')
             return resp
 
-        if payloadFormat != 'xml' or resp.text[:5] != '<?xml':
-            logger.error('XML format of AppLogin is only supported now')
+        if payload_format != 'xml' or resp.text[:5] != '<?xml':
+            logger.error('XML format of app_login is only supported now')
             return resp
 
         # NOTE (2021-02-03, Praveen Kumar): /api/requestAppToken.xml doesn't set
@@ -908,52 +870,49 @@ class AppLoginMethod(Api):
             if 'aaaLogin' in doc['imdata']:
                 token = doc['imdata']['aaaLogin']['@token']
                 domain = urlparse(resp.url).netloc.split(':')[0]
-                self._rootApi().session.cookies.set(
-                    'APIC-cookie', token, domain=domain
-                )
+                self._root_api().session.cookies.set('APIC-cookie', token, domain=domain)
 
         return resp
 
     @property
-    def Json(self):
+    def json(self):
         result = {}
-        result[self._moClassName] = {'attributes': self._properties.copy()}
-        return json.dumps(result,
-                          sort_keys=True, indent=2, separators=(',', ': '))
+        result[self._mo_class_name] = {'attributes': self._properties.copy()}
+        return json_module.dumps(result, sort_keys=True, indent=2, separators=(',', ': '))
 
     @property
-    def Xml(self):
-        result = etree.Element(self._moClassName)
+    def xml(self):
+        result = etree.Element(self._mo_class_name)
 
         for key, value in self._properties.items():
             result.set(key, value)
 
-        return _elementToString(result)
+        return _element_to_string(result)
 
     @property
-    def _relativeUrl(self):
+    def _relative_url(self):
         return 'requestAppToken'
 
-    def __call__(self, appName):
-        self._properties['appName'] = appName
+    def __call__(self, app_name):
+        self._properties['appName'] = app_name
         return self
 
 
 class LoginRefreshMethod(Api):
-    def __init__(self, parentApi):
-        super(LoginRefreshMethod, self).__init__(parentApi=parentApi)
-        self._moClassName = 'aaaRefresh'
+    def __init__(self, parent_api):
+        super().__init__(parent_api=parent_api)
+        self._mo_class_name = 'aaaRefresh'
 
     @property
-    def Json(self):
+    def json(self):
         return ''
 
     @property
-    def Xml(self):
+    def xml(self):
         return ''
 
     @property
-    def _relativeUrl(self):
+    def _relative_url(self):
         return 'aaaRefresh'
 
     def __call__(self):
@@ -961,142 +920,141 @@ class LoginRefreshMethod(Api):
 
 
 class ChangeCertMethod(Api):
-    def __init__(self, parentApi):
-        super(ChangeCertMethod, self).__init__(parentApi=parentApi)
-        self._moClassName = 'aaaChangeX509Cert'
+    def __init__(self, parent_api):
+        super().__init__(parent_api=parent_api)
+        self._mo_class_name = 'aaaChangeX509Cert'
         self._properties = {}
 
     @property
-    def Json(self):
+    def json(self):
         result = {}
-        result[self._moClassName] = {'attributes': self._properties.copy()}
-        return json.dumps(result,
-                          sort_keys=True, indent=2, separators=(',', ': '))
+        result[self._mo_class_name] = {'attributes': self._properties.copy()}
+        return json_module.dumps(result, sort_keys=True, indent=2, separators=(',', ': '))
 
     @property
-    def Xml(self):
-        result = etree.Element(self._moClassName)
+    def xml(self):
+        result = etree.Element(self._mo_class_name)
 
         for key, value in self._properties.items():
             result.set(key, value)
 
-        return _elementToString(result)
+        return _element_to_string(result)
 
     @property
-    def _relativeUrl(self):
+    def _relative_url(self):
         return 'changeSelfX509Cert'
 
     def __call__(self, userName, certName, certFile):
         self._properties['userName'] = userName
         self._properties['name'] = certName
-        with open(certFile, 'r') as f:
+        with open(certFile) as f:
             self._properties['data'] = f.read()
         return self
 
 
 class LogoutMethod(Api):
-    def __init__(self, parentApi):
-        super(LogoutMethod, self).__init__(parentApi=parentApi)
-        self._moClassName = 'aaaUser'
+    def __init__(self, parent_api):
+        super().__init__(parent_api=parent_api)
+        self._mo_class_name = 'aaaUser'
         self._properties = {}
 
-    def POST(self, format=None, **kwargs):
-        resp = super(LogoutMethod, self).POST(format=format, **kwargs)
+    def post(self, format=None, **kwargs):
+        resp = super().post(format=format, **kwargs)
         if resp.status_code == requests.codes.ok:
-            self._rootApi()._stopArThread()
+            self._root_api()._stop_ar_thread()
 
         return resp
 
     @property
-    def Json(self):
+    def json(self):
         result = {}
-        result[self._moClassName] = {'attributes': self._properties.copy()}
-        return json.dumps(result,
-                          sort_keys=True, indent=2, separators=(',', ': '))
+        result[self._mo_class_name] = {'attributes': self._properties.copy()}
+        return json_module.dumps(result, sort_keys=True, indent=2, separators=(',', ': '))
 
     @property
-    def Xml(self):
-        result = etree.Element(self._moClassName)
+    def xml(self):
+        result = etree.Element(self._mo_class_name)
 
         for key, value in self._properties.items():
             result.set(key, value)
 
-        return _elementToString(result)
+        return _element_to_string(result)
 
     @property
-    def _relativeUrl(self):
+    def _relative_url(self):
         return 'aaaLogout'
 
     def __call__(self, user=None):
-        root = self._rootApi()
+        root = self._root_api()
         if user is None:
-            self._properties['name'] = root._login['userName']
+            self._properties['name'] = root._login['user_name']
         else:
             self._properties['name'] = user
         return self
 
 
 class RefreshSubscriptionsMethod(Api):
-    def __init__(self, parentApi):
-        super(RefreshSubscriptionsMethod, self).__init__(parentApi=parentApi)
+    def __init__(self, parent_api):
+        super().__init__(parent_api=parent_api)
 
-    def GET(self, format=None, **kwargs):
+    def get(self, format=None, **kwargs):
         resp = None
         for sid in self._ids.split(','):
             args = {'id': sid}
             args.update(kwargs)
-            resp = super(RefreshSubscriptionsMethod, self).GET(format=format, **args)
+            resp = super().get(format=format, **args)
             if resp.status_code != requests.codes.ok:
-                logger.error('Refresh of subscription id %s failed with status code: %d', sid, resp.status_code)
+                logger.error(
+                    'Refresh of subscription id %s failed with status code: %d',
+                    sid,
+                    resp.status_code,
+                )
             # Current Subscription Refresh does one id at a time, so
             # we have to loop here - once it supports multiple ids, then
             # give the entire set of ids
         return resp
 
     @property
-    def Json(self):
+    def json(self):
         return ''
 
     @property
-    def Xml(self):
+    def xml(self):
         return ''
 
     @property
-    def _relativeUrl(self):
+    def _relative_url(self):
         return 'subscriptionRefresh'
 
     def __call__(self, ids):
-        ''' ids are comma separate subscription ids '''
+        """ids are comma separate subscription ids"""
         self._ids = ids
         return self
 
 
 class UploadPackageMethod(Api):
-    def __init__(self, parentApi):
-        super(UploadPackageMethod, self).__init__(parentApi=parentApi)
-        self._packageFile = None
+    def __init__(self, parent_api):
+        super().__init__(parent_api=parent_api)
+        self._package_file = None
 
     @property
-    def _relativeUrl(self):
+    def _relative_url(self):
         return 'ppi/node/mo'
 
     def __call__(self, packageFile):
-        self._packageFile = packageFile
+        self._package_file = packageFile
         return self
 
-    def POST(self, format='xml'):
+    def post(self, format='xml'):
         # TODO (2015-05-23, Praveen Kumar): Fix this method to work
         # with certificate based authentication.
-        root = self._rootApi()
+        root = self._root_api()
         if format != 'xml':
-            raise UserError('Unsupported format: {}'.format(format))
-        if not os.path.exists(self._packageFile):
-            raise ResourceError('File not found: ' + self.packageFile)
-        with open(self._packageFile, 'r') as f:
-            response = root._session.request(
-                'POST', self._url(format), files={'file': f},
-                verify=root._verify
-            )
+            raise UserError(f'Unsupported format: {format}')
+        if not os.path.exists(self._package_file):
+            raise ResourceError('File not found: ' + self.package_file)
+        with open(self._package_file) as f:
+            response = root._session.request('post', self._url(format), files={'file': f}, verify=root._verify)
         if response.status_code != requests.codes.ok:
             # TODO: Parse error message and extract fields.
             raise RestError(response.text)
@@ -1104,103 +1062,96 @@ class UploadPackageMethod(Api):
 
 
 class ResolveClassMethod(Api):
-    def __init__(self, parentApi):
-        super(ResolveClassMethod, self).__init__(parentApi=parentApi)
+    def __init__(self, parent_api):
+        super().__init__(parent_api=parent_api)
 
     @property
-    def _relativeUrl(self):
-        return 'class/' + self._className
+    def _relative_url(self):
+        return 'class/' + self._class_name
 
-    def __call__(self, className):
-        self._className = className
+    def __call__(self, class_name):
+        self._class_name = class_name
         return self
 
-    def GET(self, format=None, mit=None, autoPage=False, pageSize=10000,
-            **kwargs):
+    def get(self, format=None, mit=None, auto_page=False, page_size=10000, **kwargs):
         if format is None:
-            format = payloadFormat
+            format = payload_format
 
-        subscriptionIds = []
-        topRoot = self._rootApi().mit if mit is None else mit
-        if autoPage:
-            # TODO: Subscription is not supported with autoPage option.
+        subscription_ids = []
+        top_root = self._root_api().mit if mit is None else mit
+        if auto_page:
+            # TODO: Subscription is not supported with auto_page option.
             if 'subscription' in kwargs:
-                raise UserError(
-                    'Subscription is not suppored with autoPage option')
-            logger.debug('Auto paginating query with page size of %d',
-                         pageSize)
-            currentPage = 0
+                raise UserError('Subscription is not suppored with auto_page option')
+            logger.debug('Auto paginating query with page size of %d', page_size)
+            current_page = 0
             results = []
             while True:
-                pageOptions = (options.pageSize(str(pageSize)) &
-                               options.page(str(currentPage)))
-                newKwargs = dict(pageOptions.items() + kwargs.items())
-                logger.debug('Querying page %d', currentPage)
-                response = super(ResolveClassMethod, self).GET(format,
-                                                               **newKwargs)
+                page_options = options.page_size(str(page_size)) & options.page(str(current_page))
+                new_kwargs = dict(page_options.items() + kwargs.items())
+                logger.debug('Querying page %d', current_page)
+                response = super().get(format, **new_kwargs)
                 if format == 'json':
-                    result = topRoot.ParseJsonResponse(response.text)
+                    result = top_root.parse_json_response(response.text)
                 elif format == 'xml':
-                    result = topRoot.ParseXmlResponse(response.text)
+                    result = top_root.parse_xml_response(response.text)
                 logger.debug('Got %s objects', len(result))
                 results.append(result)
-                if len(result) < pageSize:
+                if len(result) < page_size:
                     break
-                currentPage += 1
+                current_page += 1
             result = [mo for resultList in results for mo in resultList]
         else:
-            response = super(ResolveClassMethod, self).GET(format, **kwargs)
+            response = super().get(format, **kwargs)
             if format == 'json':
-                result = topRoot.ParseJsonResponse(
-                    response.text, subscriptionIds=subscriptionIds)
+                result = top_root.parse_json_response(response.text, subscription_ids=subscription_ids)
             elif format == 'xml':
-                result = topRoot.ParseXmlResponse(
-                    response.text, subscriptionIds=subscriptionIds)
+                result = top_root.parse_xml_response(response.text, subscription_ids=subscription_ids)
 
-        topRoot.ReadOnlyTree = True
+        top_root.read_only_tree = True
 
-        if subscriptionIds:
-            return result, subscriptionIds[0]
+        if subscription_ids:
+            return result, subscription_ids[0]
         else:
             return result
 
 
 class MethodApi(Api):
-    def __init__(self, parentApi):
-        super(MethodApi, self).__init__(parentApi=parentApi)
+    def __init__(self, parent_api):
+        super().__init__(parent_api=parent_api)
 
     @property
-    def _relativeUrl(self):
+    def _relative_url(self):
         return ''
 
     @property
-    def Login(self):
-        return LoginMethod(parentApi=self)
+    def login(self):
+        return LoginMethod(parent_api=self)
 
     @property
-    def AppLogin(self):
-        return AppLoginMethod(parentApi=self)
+    def app_login(self):
+        return AppLoginMethod(parent_api=self)
 
     @property
-    def LoginRefresh(self):
-        return LoginRefreshMethod(parentApi=self)
+    def login_refresh(self):
+        return LoginRefreshMethod(parent_api=self)
 
     @property
-    def Logout(self):
-        return LogoutMethod(parentApi=self)
+    def logout(self):
+        return LogoutMethod(parent_api=self)
 
     @property
-    def RefreshSubscriptions(self):
-        return RefreshSubscriptionsMethod(parentApi=self)
+    def refresh_subscriptions(self):
+        return RefreshSubscriptionsMethod(parent_api=self)
 
     @property
-    def ChangeCert(self):
-        return ChangeCertMethod(parentApi=self)
+    def change_cert(self):
+        return ChangeCertMethod(parent_api=self)
 
     @property
-    def UploadPackage(self):
-        return UploadPackageMethod(parentApi=self)
+    def upload_package(self):
+        return UploadPackageMethod(parent_api=self)
 
     @property
-    def ResolveClass(self):
-        return ResolveClassMethod(parentApi=self)
+    def resolve_class(self):
+        return ResolveClassMethod(parent_api=self)

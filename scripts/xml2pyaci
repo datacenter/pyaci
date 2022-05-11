@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-from __future__ import print_function
 
 import argparse
 
@@ -9,18 +8,16 @@ from lxml import etree
 # Given an input file that is an ACI XML, `xml2py` utility can generate the
 # corresponding PyACI Python code.
 
+
 def main():
     args = parseArgs()
     convert(args.input, args.output)
 
 
 def parseArgs():
-    parser = argparse.ArgumentParser(
-        description='Convert ACI XML file to PyACI code snippet')
-    parser.add_argument('input', metavar='INPUT', type=str,
-                        help='input XML file path')
-    parser.add_argument('output', metavar='OUTPUT', type=str,
-                        help='output Python file path')
+    parser = argparse.ArgumentParser(description='Convert ACI XML file to PyACI code snippet')
+    parser.add_argument('input', metavar='INPUT', type=str, help='input XML file path')
+    parser.add_argument('output', metavar='OUTPUT', type=str, help='output Python file path')
     return parser.parse_args()
 
 
@@ -30,8 +27,7 @@ def convert(inFile, outFile):
         with open(outFile, 'w') as fout:
             print('from pyaci import Node', file=fout)
             print("\n\nnode = Node('https://APIC')", file=fout)
-            print("# node.methods.Login('admin', 'password').POST()",
-                  file=fout)
+            print("# node.methods.Login('admin', 'password').POST()", file=fout)
             print('mit = node.mit', file=fout)
             emitNode(fout, 'mit', tree.getroot())
 
@@ -42,14 +38,14 @@ def emitNode(fout, parent, node):
         print('#', node.text, file=fout)
     else:
         if node.getchildren():
-            prefix = '{} = '.format(me)
+            prefix = f'{me} = '
         else:
             prefix = ''
         args = []
         for name, value in node.attrib.items():
-            args.append("{}='{}'".format(name, value))
+            args.append(f"{name}='{value}'")
         args = ', '.join(args)
-        print('{}{}.{}({})'.format(prefix, parent, me, args), file=fout)
+        print(f'{prefix}{parent}.{me}({args})', file=fout)
     for child in node.iterchildren():
         emitNode(fout, me, child)
 

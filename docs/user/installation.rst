@@ -34,4 +34,3 @@ Here is a sample usage::
    Invoking metagen.py on APIC
    Copying generated meta from APIC to /Users/praveen/.aci-meta/aci-meta.1.2(0.104a).json
    No default meta exist. Setting the current meta as the default.
-

@@ -7,39 +7,41 @@ pyaci.query
 This module contains support for querying the PyACI MIT.
 """
 
-from collections import defaultdict
-from flask import Flask, request, render_template
-from flask.views import MethodView
-from .utils import getParentDn
 import operator
 import os
 import re
+from collections import defaultdict
+
+from flask import Flask, render_template, request
+from flask.views import MethodView
+
+from .utils import get_parent_dn
 
 
 # TODO: Move to core.
-def bfsMit(mit, predicate=lambda mo: True):
-    if mit.ClassName != 'topRoot' and predicate(mit):
+def bfs_mit(mit, predicate=lambda mo: True):
+    if mit.class_name != 'topRoot' and predicate(mit):
         yield mit
     for child in mit._children.values():
-        for mo in bfsMit(child):
+        for mo in bfs_mit(child):
             if predicate(mo):
                 yield mo
 
 
-def isDn(value):
+def is_dn(value):
     return str(value).find('/') != -1
 
 
-class Index(object):
+class Index:
     def __init__(self, mit, name):
         self._mit = mit
         self._name = name
-        self._objectsByDn = {}
-        self._objectsByClass = defaultdict(list)
+        self._objects_by_dn = {}
+        self._objects_by_class = defaultdict(list)
 
-        for mo in bfsMit(mit):
-            self._objectsByDn[mo.Dn] = mo
-            self._objectsByClass[mo.ClassName].append(mo)
+        for mo in bfs_mit(mit):
+            self._objects_by_dn[mo.dn] = mo
+            self._objects_by_class[mo.class_name].append(mo)
 
     @property
     def mit(self):
@@ -49,43 +51,43 @@ class Index(object):
     def name(self):
         return self._name
 
-    def queryByDn(self, dn, **kwargs):
-        mo = self._objectsByDn.get(dn, None)
+    def query_by_dn(self, dn, **kwargs):
+        mo = self._objects_by_dn.get(dn, None)
         if mo is None:
             return []
 
-        rspSubtree = kwargs.get('rsp-subtree', [])
-        if not rspSubtree:
+        rsp_subtree = kwargs.get('rsp-subtree', [])
+        if not rsp_subtree:
             return [mo]
-        elif 'children' in rspSubtree:
+        elif 'children' in rsp_subtree:
             return [x for x in mo._children.values()]
         else:
             return []
 
-    def queryByClass(self, className, **kwargs):
+    def query_by_class(self, class_name, **kwargs):
         # TODO: Handle invalid class names.
-        queryTargetFilter = kwargs.get('query-target-filter', [])
-        if queryTargetFilter:
+        query_target_filter = kwargs.get('query-target-filter', [])
+        if query_target_filter:
             try:
-                match = re.match('(.*)\((.*),"(.*)"\)', queryTargetFilter[0])
+                match = re.match(r'(.*)\((.*),"(.*)"\)', query_target_filter[0])
                 if match:
                     op = match.group(1)
-                    propName = match.group(2)
-                    tokens = propName.split('.')
-                    clName = tokens[0]
-                    propName = tokens[1]
+                    prop_name = match.group(2)
+                    tokens = prop_name.split('.')
+                    cl_name = tokens[0]
+                    prop_name = tokens[1]
                     value = match.group(3)
 
                     def pred(mo):
-                        if mo.ClassName != clName:
+                        if mo.class_name != cl_name:
                             return False
-                        return getattr(operator, op)(getattr(mo, propName),
-                                                     value)
-                    return filter(pred, self._objectsByClass[className])
+                        return getattr(operator, op)(getattr(mo, prop_name), value)
+
+                    return filter(pred, self._objects_by_class[class_name])
             except Exception as e:
                 print(e)
 
-        return self._objectsByClass[className]
+        return self._objects_by_class[class_name]
 
 
 class AView(MethodView):
@@ -102,80 +104,82 @@ class AView(MethodView):
         return self._app
 
     @property
-    def appIndices(self):
+    def app_indices(self):
         return sorted(self.app._indices.keys())
 
 
 class DnView(AView):
     def get(self, dn):
-        result = self.index.queryByDn(dn, **request.args)
-        return render_template('mo-view.html', mos=result,
-                               indexName=self.index.name,
-                               indices=self.appIndices,
-                               currentDn=dn)
+        result = self.index.query_by_dn(dn, **request.args)
+        return render_template(
+            'mo-view.html',
+            mos=result,
+            indexName=self.index.name,
+            indices=self.app_indices,
+            currentDn=dn,
+        )
 
 
 class ClassView(AView):
-    def get(self, className):
-        result = self.index.queryByClass(className, **request.args)
-        return render_template('mo-view.html', mos=result,
-                               indexName=self.index.name,
-                               indices=self.appIndices,
-                               currentClassName=className)
+    def get(self, class_name):
+        result = self.index.query_by_class(class_name, **request.args)
+        return render_template(
+            'mo-view.html',
+            mos=result,
+            indexName=self.index.name,
+            indices=self.app_indices,
+            currentClassName=class_name,
+        )
 
 
 class AuditView(AView):
     def get(self, dn):
-        queryOpt = {
-            'query-target-filter': ['eq(aaaModLR.affected,"{}")'.format(dn)]
-        }
-        result = self.index.queryByClass('aaaModLR', **queryOpt)
+        query_opt = {'query-target-filter': [f'eq(aaaModLR.affected,"{dn}")']}
+        result = self.index.query_by_class('aaaModLR', **query_opt)
 
-        def sortKey(mo):
+        def sort_key(mo):
             return int(mo.txId)
 
-        return render_template('audit-view.html',
-                               mos=sorted(result, key=sortKey),
-                               indexName=self.index.name,
-                               indices=self.appIndices)
+        return render_template(
+            'audit-view.html',
+            mos=sorted(result, key=sort_key),
+            indexName=self.index.name,
+            indices=self.app_indices,
+        )
 
 
-class App(object):
+class App:
     def __init__(self):
         self._indices = {}
-        templateFolder = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), 'templates')
-        staticFolder = os.path.join(
-            os.path.dirname(os.path.abspath(__file__)), 'static')
-        self._app = Flask('pyaci Query App',
-                          static_folder=staticFolder,
-                          template_folder=templateFolder)
-        self._app.add_template_test(isDn, 'Dn')
-        self._app.add_template_filter(getParentDn, 'parentDn')
+        template_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'templates')
+        static_folder = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'static')
+        self._app = Flask(
+            'pyaci query app',
+            static_folder=static_folder,
+            template_folder=template_folder,
+        )
+        self._app.add_template_test(is_dn, 'dn')
+        self._app.add_template_filter(get_parent_dn, 'parentDn')
 
-    def addIndex(self, index):
+    def add_index(self, index):
         # TODO: Handle duplicate index.
         self._indices[index.name] = index
         self._app.add_url_rule(
-            '/{}/dn/<path:dn>'.format(index.name),
-            view_func=DnView.as_view('dn_view_{}'.format(index.name),
-                                     index, self),
-            methods=['GET']
+            f'/{index.name}/dn/<path:dn>',
+            view_func=DnView.as_view(f'dn_view_{index.name}', index, self),
+            methods=['GET'],
         )
         self._app.add_url_rule(
-            '/{}/class/<className>'.format(index.name),
-            view_func=ClassView.as_view('class_view_{}'.format(index.name),
-                                        index, self),
-            methods=['GET']
+            f'/{index.name}/class/<class_name>',
+            view_func=ClassView.as_view(f'class_view_{index.name}', index, self),
+            methods=['GET'],
         )
 
         if index.name == 'audit':
             self._app.add_url_rule(
-                '/{}/affected/<path:dn>'.format(index.name),
-                view_func=AuditView.as_view(
-                    'affected_view_{}'.format(index.name),
-                    index, self),
-                methods=['GET']
+                f'/{index.name}/affected/<path:dn>',
+                view_func=AuditView.as_view(f'affected_view_{index.name}', index, self),
+                methods=['GET'],
             )
 
     def indices(self):
