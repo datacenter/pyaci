@@ -1134,7 +1134,7 @@ class ResolveClassMethod(Api):
             while True:
                 pageOptions = (options.pageSize(str(pageSize)) &
                                options.page(str(currentPage)))
-                newKwargs = dict(pageOptions.items() + kwargs.items())
+                newKwargs = dict(pageOptions.items() | kwargs.items())
                 logger.debug('Querying page %d', currentPage)
                 response = super(ResolveClassMethod, self).GET(format,
                                                                **newKwargs)
