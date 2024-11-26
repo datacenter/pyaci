@@ -262,9 +262,16 @@ class Node(Api):
             try:
                 proxyUrl = self._userProxies.get("https", self._userProxies.get("http", None))
                 if proxyUrl:
+                    # proxy format: http://username:password@host:port
+                    # if username:password is provided, it has to be removed in
+                    # order to retrive host and port properly.
+                    if "@" in proxyUrl:
+                        proxyUrl = "http://{}".format(proxyUrl.split("@")[1])
+                    logger.info("URL proxyUrl {}".format(proxyUrl))
                     runForeverKwargs["http_proxy_host"] = urlparse(proxyUrl).netloc.split(":")[0]
                     runForeverKwargs["http_proxy_port"] = int(urlparse(proxyUrl).netloc.split(":")[1])
                     runForeverKwargs["proxy_type"] = "http"
+                    logger.info("URL kwargs {}".format(runForeverKwargs))
             except ValueError:
                 logger.info("http(s) proxy unavailable for {}".format(self.webSocketUrl))
         wst = threading.Thread(target=lambda: ws.run_forever(
