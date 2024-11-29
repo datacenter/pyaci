@@ -7,7 +7,9 @@ pyaci.core
 This module contains the core classes of PyACI.
 """
 
-from OpenSSL.crypto import FILETYPE_PEM, load_privatekey, sign
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from collections import OrderedDict, defaultdict, deque
 from lxml import etree
 from requests import Request
@@ -159,8 +161,12 @@ class Api(object):
         payload = unquote(payload)
         if data is not None:
             payload += data
-        signature = base64.b64encode(sign(rootApi._x509Key, payload,
-                                          'sha256'))
+        signature = base64.b64encode(rootApi._x509Key.sign(
+            payload.encode('utf-8'),
+            padding.PKCS1v15(),
+            hashes.SHA256()
+        ))
+
         if sys.version_info[0] >= 3:
             signature = signature.decode('ascii')
 
@@ -224,7 +230,7 @@ class Node(Api):
             self._url.replace('https', 'wss').replace('http', 'ws'), token)
 
     def useX509CertAuth(self, userName, certName, keyFile, appcenter=False):
-        with open(keyFile, 'r') as f:
+        with open(keyFile, 'rb') as f:
             key = f.read()
         if appcenter:
             self._x509Dn = (self.mit.polUni().aaaUserEp().
@@ -232,7 +238,7 @@ class Node(Api):
         else:
             self._x509Dn = (self.mit.polUni().aaaUserEp().
                             aaaUser(userName).aaaUserCert(certName).Dn)
-        self._x509Key = load_privatekey(FILETYPE_PEM, key)
+        self._x509Key = load_pem_private_key(key, password=None)
 
     def toggleTestApi(self, shouldEnable, dme='policymgr'):
         if shouldEnable:
