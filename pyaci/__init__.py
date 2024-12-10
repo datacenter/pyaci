@@ -8,13 +8,13 @@ REST API.
 """
 
 __title__ = 'pyaci'
-__version__ = '1.0'
+__version__ = '1.1'
 __build__ = 1
 __author__ = 'Praveen Kumar'
 __license__ = 'Apache 2.0'
 __copyright__ = 'Copyright (c) 2015 Cisco Systems, Inc. All rights reserved.'
 
 
-from .core import Node
+from .core import Node, Backup
 import pyaci.options
 import pyaci.filters
