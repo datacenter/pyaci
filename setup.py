@@ -11,7 +11,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 setup(
     name='pyaci',
 
-    version='0.6.0',
+    version='1.0.0',
 
     description='Python Bindings for Cisco ACI REST API',
     long_description=long_description,
@@ -48,16 +48,18 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     install_requires=[
-        'Flask',
+        'Flask<=3.0.3',
         'lxml',
         'paramiko',
         'parse',
-        'pyopenssl',
+        'pyopenssl==22.0.0',
+        'cryptography==38.0.4',
         'pyyaml',
         'requests',
         'scp',
         'websocket-client',
         'xmltodict',
+        'six'
     ],
 
     # List additional groups of dependencies here (e.g. development
