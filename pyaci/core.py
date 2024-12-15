@@ -1,4 +1,3 @@
-# Copyright (c) 2014, 2015 Cisco Systems, Inc. All rights reserved.
 
 """
 pyaci.core
@@ -7,7 +6,9 @@ pyaci.core
 This module contains the core classes of PyACI.
 """
 
-from OpenSSL.crypto import FILETYPE_PEM, load_privatekey, sign
+from cryptography.hazmat.primitives import hashes
+from cryptography.hazmat.primitives.asymmetric import padding
+from cryptography.hazmat.primitives.serialization import load_pem_private_key
 from collections import OrderedDict, defaultdict, deque
 from lxml import etree
 from requests import Request
@@ -159,8 +160,12 @@ class Api(object):
         payload = unquote(payload)
         if data is not None:
             payload += data
-        signature = base64.b64encode(sign(rootApi._x509Key, payload,
-                                          'sha256'))
+        signature = base64.b64encode(rootApi._x509Key.sign(
+            payload.encode('utf-8'),
+            padding.PKCS1v15(),
+            hashes.SHA256()
+        ))
+
         if sys.version_info[0] >= 3:
             signature = signature.decode('ascii')
 
@@ -224,7 +229,7 @@ class Node(Api):
             self._url.replace('https', 'wss').replace('http', 'ws'), token)
 
     def useX509CertAuth(self, userName, certName, keyFile, appcenter=False):
-        with open(keyFile, 'r') as f:
+        with open(keyFile, 'rb') as f:
             key = f.read()
         if appcenter:
             self._x509Dn = (self.mit.polUni().aaaUserEp().
@@ -232,7 +237,7 @@ class Node(Api):
         else:
             self._x509Dn = (self.mit.polUni().aaaUserEp().
                             aaaUser(userName).aaaUserCert(certName).Dn)
-        self._x509Key = load_privatekey(FILETYPE_PEM, key)
+        self._x509Key = load_pem_private_key(key, password=None)
 
     def toggleTestApi(self, shouldEnable, dme='policymgr'):
         if shouldEnable:
@@ -351,6 +356,27 @@ class Node(Api):
             self._autoRefreshThread = None
             self._autoRefresh = False
 
+class Backup(object):
+    # This class uses a few of the previously defined classes and methods but  is not a subclass of any of them.
+    # As such I am using composition to include the methods and classes that I need to use.
+    def __init__(self, backupFile=None, aciMetaFilePath=None):
+        self._backupFile = backupFile
+        if aciMetaFilePath is not None:
+            with open(aciMetaFilePath, 'rb') as f:
+                logger.debug('Loading meta information from %s',
+                             aciMetaFilePath)
+                aciMetaContents = json.load(f)
+                self._aciClassMetas = aciMetaContents['classes']
+        else:
+            if not aciClassMetas:
+                raise MetaError('ACI meta was not specified !')
+            else:
+                self._aciClassMetas = aciClassMetas
+        self.__mo = Mo(self, 'topRoot', self._aciClassMetas)
+        
+    def load(self):
+        with open(self._backupFile, 'r') as f:
+            return self.__mo.ParseJsonResponse(f.read())[0]
 
 class MoIter(Api):
     def __init__(self, parentApi, className, objects, aciClassMetas):
@@ -600,14 +626,17 @@ class Mo(Api):
         if sIds:
             subscriptionIds.extend(sIds)
         mos = []
-        for element in response['imdata']:
-            name, value = next(iteritems(element))
-            if 'dn' not in value['attributes']:
-                raise MoError('Property `dn` not found in dict {}'.format(
-                    value['attributes']))
-            mo = self.FromDn(value['attributes']['dn'])
-            mo._fromObjectDict(element)
-            mos.append(mo)
+        element = response
+        if 'imdata' in response:
+            element = response['imdata'][0]
+            
+        name, value = next(iteritems(element))
+        if 'dn' not in value['attributes']:
+            raise MoError('Property `dn` not found in dict {}'.format(
+                value['attributes']))
+        mo = self.FromDn(value['attributes']['dn'])
+        mo._fromObjectDict(element)
+        mos.append(mo)
         return mos
 
     def GET(self, format=None, **kwargs):
@@ -646,9 +675,11 @@ class Mo(Api):
 
         children = objectDict[self._className].get('children', [])
         for cdict in children:
-            className = next(iterkeys(cdict))
+            # Some new classes like notifOperClass have and attribute called className. That makes Python Crash when trying to access it
+            # as we now have 2 className parameters. so now we use cClassName
+            cClassName = next(iterkeys(cdict))
             attributes = next(itervalues(cdict)).get('attributes', {})
-            child = self._spawnChildFromAttributes(className, **attributes)
+            child = self._spawnChildFromAttributes(cClassName, **attributes)
             child._fromObjectDict(cdict)
 
     def _fromXmlElement(self, element, localOnly=False):
@@ -664,9 +695,9 @@ class Mo(Api):
             self._properties[key] = value
 
         for celement in element.iterchildren('*'):
-            className = celement.tag
+            cClassName = celement.tag
             attributes = celement.attrib
-            child = self._spawnChildFromAttributes(className, **attributes)
+            child = self._spawnChildFromAttributes(cClassName, **attributes)
             child._fromXmlElement(celement, localOnly=localOnly)
 
     def _dataDict(self):
@@ -739,10 +770,10 @@ class Mo(Api):
         ]
         return moIter(*identifierArgs)
 
-    def _spawnChildFromAttributes(self, className, **attributes):
-        rnFormat = self._aciClassMetas[className]['rnFormat']
+    def _spawnChildFromAttributes(self, cClassName, **attributes):
+        rnFormat = self._aciClassMetas[cClassName]['rnFormat']
         rn = rnFormat.format(**attributes)
-        return self._spawnChildFromRn(className, rn)
+        return self._spawnChildFromRn(cClassName, rn)
 
 
 class AutoRefreshThread(threading.Thread):

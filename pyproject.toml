@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cisco-pyaci"
-version = "1.0.0"
+version = "1.1.0"
 authors = [
   { name="Praveen Kumar", email="praveek6@cisco.com" },
   { name="Camillo Rossi", email="camrossi@cisco.com" },
@@ -22,8 +22,8 @@ dependencies = [
     'Flask<=3.0.3',
     'lxml',
     'paramiko',
-    'pyopenssl==22.0.0',
-    'cryptography==38.0.4',
+    'pyopenssl',
+    'cryptography',
     'parse',
     'pyyaml',
     'requests',
@@ -43,8 +43,6 @@ exclude = [
   "/docs",
   "/tests",
   "/examples",
-  "/.circleci",
-  "/.travis.yml",
   "/scripts",
   "/meta",
   "/Dockerfile",
