@@ -23,7 +23,7 @@ dependencies = [
     'lxml',
     'paramiko',
     'pyopenssl==22.0.0',
-    'cryptography==38.0.4',
+    'cryptography==44.0.0',
     'parse',
     'pyyaml',
     'requests',

@@ -53,7 +53,7 @@ setup(
         'paramiko',
         'parse',
         'pyopenssl==22.0.0',
-        'cryptography==38.0.4',
+        'cryptography==44.0.0',
         'pyyaml',
         'requests',
         'scp',
