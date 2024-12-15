@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "pyaci"
+name = "cisco-pyaci"
 version = "1.0.0"
 authors = [
   { name="Praveen Kumar", email="praveek6@cisco.com" },
