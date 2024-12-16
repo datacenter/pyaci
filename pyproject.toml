@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cisco-pyaci"
-version = "1.0.1"
+version = '0.6.0'
 authors = [
   { name="Praveen Kumar", email="praveek6@cisco.com" },
   { name="Camillo Rossi", email="camrossi@cisco.com" },
