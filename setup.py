@@ -11,7 +11,7 @@ with open(path.join(here, 'README.rst'), encoding='utf-8') as f:
 setup(
     name='pyaci',
 
-    version='1.0.1',
+    version='1.0.0-py2',
 
     description='Python Bindings for Cisco ACI REST API',
     long_description=long_description,
@@ -52,8 +52,8 @@ setup(
         'lxml',
         'paramiko',
         'parse',
-        'pyopenssl==21.0.0',
-        'cryptography==3.3.2',
+        'pyopenssl<=21.0.0',
+        'cryptography<=3.3.2',
         'pyyaml',
         'requests',
         'scp',

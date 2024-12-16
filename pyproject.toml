@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cisco-pyaci"
-version = "1.0.0"
+version = "1.0.0-py2"
 authors = [
   { name="Praveen Kumar", email="praveek6@cisco.com" },
   { name="Camillo Rossi", email="camrossi@cisco.com" },
@@ -22,8 +22,8 @@ dependencies = [
     'Flask<=3.0.3',
     'lxml',
     'paramiko',
-    'pyopenssl==21.0.0',
-    'cryptography==3.3.2',
+    'pyopenssl<=21.0.0',
+    'cryptography<=3.3.2',
     'parse',
     'pyyaml',
     'requests',
