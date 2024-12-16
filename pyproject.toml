@@ -11,7 +11,7 @@ authors = [
 ]
 description = "Python Bindings for Cisco ACI REST API"
 readme = "README.rst"
-requires-python = ">=2.7"
+requires-python = ">=2.7, <3"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
@@ -22,8 +22,8 @@ dependencies = [
     'Flask<=3.0.3',
     'lxml',
     'paramiko',
-    'pyopenssl==22.0.0',
-    'cryptography==38.0.4',
+    'pyopenssl==21.0.0',
+    'cryptography==3.3.2',
     'parse',
     'pyyaml',
     'requests',

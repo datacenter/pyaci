@@ -52,7 +52,7 @@ setup(
         'lxml',
         'paramiko',
         'parse',
-        'pyopenssl==22.0.0',
+        'pyopenssl==21.0.0',
         'cryptography==3.3.2',
         'pyyaml',
         'requests',
