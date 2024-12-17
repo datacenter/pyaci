@@ -11,7 +11,7 @@ authors = [
 ]
 description = "Python Bindings for Cisco ACI REST API"
 readme = "README.rst"
-requires-python = ">=3.8"
+requires-python = ">=3.6"
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
