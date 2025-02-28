@@ -8,6 +8,7 @@ import inspect
 import os
 import paramiko
 import errno
+import sys
 
 
 def parse_args():
@@ -56,9 +57,15 @@ def main():
     script_dir = os.path.dirname(os.path.abspath(filename))
     metagen_path = os.path.join(script_dir, 'metagen.py')
     scp.put(metagen_path, '/tmp/metagen.py')
+    
+    program = "/tmp/metagen.py"
+    python_command = "python3"
+    if sys.version_info.major < 3:
+        python_command = "python2.7"
 
     print('Invoking metagen.py on APIC')
-    stdin, stdout, stderr = ssh.exec_command('python2.7 /tmp/metagen.py')
+    print("Using python interpreter '%s' to run '%s'" % (python_command, program))
+    stdin, stdout, stderr = ssh.exec_command("%s %s" % (python_command, program))
     ''.join(stdout.readlines()).strip()
     # TODO (2015-09-14, Praveen Kumar): Check the exit status properly.
 
