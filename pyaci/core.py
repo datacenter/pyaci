@@ -81,11 +81,11 @@ class Api(object):
     def DELETE(self, format=None):
         return self._performRequest('DELETE', format=format)
 
-    def POST(self, format=None, **kwargs):
+    def POST(self, format=None, useParentUrl=False, **kwargs):
         return self._performRequest(
-            'POST', format=format, needData=True, **kwargs)
+            'POST', format=format, needData=True, useParentUrl=useParentUrl, **kwargs)
 
-    def _url(self, format=None, **kwargs):
+    def _url(self, format=None, useParentUrl=False, **kwargs):
         if format is None:
             format = payloadFormat
 
@@ -111,15 +111,18 @@ class Api(object):
         else:
             options = ''
 
-        return loop(self, '') + '.' + format + options
+        if useParentUrl:
+            return loop(self._parentApi, '') + '.' + format + options
+        else:
+            return loop(self, '') + '.' + format + options
 
-    def _performRequest(self, method, format=None, needData=False, **kwargs):
+    def _performRequest(self, method, format=None, needData=False, useParentUrl=False,  **kwargs):
         if format is None:
             format = payloadFormat
 
         logger = subLogger(method)
         rootApi = self._rootApi()
-        url = self._url(format, **kwargs)
+        url = self._url(format, useParentUrl=useParentUrl, **kwargs)
 
         if needData:
             if format == 'json':
@@ -659,6 +662,9 @@ class Mo(Api):
             return result, subscriptionIds[0]
         else:
             return result
+
+    def POST(self, format=None, **kwargs):
+        return super(Mo, self).POST(format, useParentUrl=(not self._isTopRoot()), **kwargs)
 
     @property
     def _relativeUrl(self):
