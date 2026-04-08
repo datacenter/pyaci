@@ -74,8 +74,10 @@ def main():
 
     aciMeta = {}
 
-    pool = multiprocessing.Pool(multiprocessing.cpu_count())
-    aciClassMetas = pool.imap(generateClassMeta, classNames)
+    workers = min(6, multiprocessing.cpu_count())
+    with multiprocessing.Pool(processes=workers, maxtasksperchild=600) as pool:
+        aciClassMetas = list(pool.imap(generateClassMeta, classNames, chunksize=1))
+
     aciMeta['classes'] = dict(aciClassMetas)
 
     with open('aci-meta.json', 'w') as out:
